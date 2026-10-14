@@ -108,7 +108,7 @@
       <label>機構／公司名稱 <span class="req">*</span></label>
       <input name="orgName" required placeholder="例：○○大飯店、○○醫院、○○團膳">
       <label>統一編號 <span class="req">*</span></label>
-      <input name="taxId" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" required placeholder="8 碼數字，報備後鎖定">
+      <input name="taxId" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" required placeholder="8 碼數字，報備後依縣市鎖定">
       <div class="hint">不知道統編？可至 <a href="https://findbiz.nat.gov.tw/" target="_blank" rel="noopener">經濟部商工登記查詢</a> 以公司名稱查詢。</div>
       <div id="dupMsg" class="warn hidden"></div>
       <div class="row">
@@ -193,7 +193,7 @@
     </div>
 
     <button class="btn" id="submitBtn" type="submit">送出報備</button>
-    <div class="hint" style="text-align:center;margin-top:8px">同一統編以最先報備者為準，鎖定保護期 90 天</div>
+    <div class="hint" style="text-align:center;margin-top:8px">同一統編＋同一縣市以最先報備者為準，鎖定保護期 90 天</div>
   </form>
 
   <!-- 送出結果 -->
@@ -299,18 +299,20 @@ function runCheck() {
   checkTimer = setTimeout(async () => {
     const box = $('#dupMsg');
     const tax = form.taxId.value.replace(/\D/g, '');
-    if (tax.length !== 8 && !form.orgName.value.trim()) { box.classList.add('hidden'); setLocked(false); return; }
+    const city = form.city.value;
+    if ((tax.length !== 8 && !form.orgName.value.trim()) || !city) { box.classList.add('hidden'); setLocked(false); return; }
     try {
-      const r = await api('check', { orgName: form.orgName.value, taxId: tax.length === 8 ? tax : '' });
+      const r = await api('check', { orgName: form.orgName.value, taxId: tax.length === 8 ? tax : '', city: city });
       if (!r.ok) return;
       box.className = 'warn ' + (r.available ? 'ok' : 'no');
-      box.textContent = r.available ? (tax.length === 8 ? '✓ 此統編尚未被報備，可以報備' : '✓ 目前尚無人報備此機構名稱') : '🔒 ' + r.message;
+      box.textContent = r.available ? (tax.length === 8 ? '✓ 此統編在' + city + '尚未被報備，可以報備' : '✓ ' + city + '目前尚無人報備此機構名稱') : '🔒 ' + r.message;
       setLocked(!r.available);
     } catch (e) {}
   }, 400);
 }
 form.taxId.addEventListener('input', () => { if (form.taxId.value.replace(/\D/g, '').length === 8) runCheck(); else setLocked(false); });
 form.orgName.addEventListener('change', runCheck);
+form.city.addEventListener('change', runCheck);
 
 form.onsubmit = async e => {
   e.preventDefault();
