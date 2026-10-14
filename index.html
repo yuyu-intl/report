@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>御宇國際 顧問報備</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{--g:#5AAF48;--b:#047EB1;--b2:#3A9BE8;--deep:#035C82;--bl:#e7f3f9;--gl:#edf6ea;--bd:#d6e2e8;--tx:#1b2a33;--mu:#64737d;--red:#c0392b;--amb:#b7791f;--bg:#f4f8fa}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--tx);font-size:16px}
+  header{background:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:4px solid;border-image:linear-gradient(90deg,var(--g),var(--b2)) 1;position:sticky;top:0;z-index:5}
+  header img{width:46px;height:46px}
+  header h1{margin:0;font-size:18px;color:var(--b);letter-spacing:1px}
+  header p{margin:2px 0 0;font-size:12px;color:var(--mu)}
+  .tabs{display:flex;background:#fff;border-bottom:1px solid var(--bd);position:sticky;top:74px;z-index:4}
+  .tab{flex:1;padding:12px 4px;text-align:center;border:0;background:none;font-size:15px;color:var(--mu);border-bottom:3px solid transparent}
+  .tab.on{color:var(--b);border-bottom-color:var(--b);font-weight:600}
+  main{padding:12px 16px 40px;max-width:640px;margin:0 auto}
+  .card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:15px;margin:0 0 10px;color:var(--b);display:flex;align-items:center;gap:8px}
+  .card h2::before{content:"";width:4px;height:16px;border-radius:2px;background:var(--g)}
+  label{display:block;font-size:14px;margin:10px 0 4px}
+  label .req{color:var(--red)}
+  input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;font-size:16px;background:#fff;color:var(--tx)}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--b2);border-color:transparent}
+  textarea{min-height:70px}
+  .row{display:flex;gap:10px}.row>div{flex:1;min-width:0}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chips label{margin:0;display:flex;align-items:center;gap:6px;border:1px solid var(--bd);border-radius:20px;padding:7px 12px;font-size:14px;background:#fff}
+  .chips label:has(input:checked){background:var(--bl);border-color:var(--b);color:var(--deep)}
+  .chips input{width:auto;margin:0;accent-color:var(--b)}
+  .hint{font-size:12px;color:var(--mu);margin-top:4px}
+  .warn{font-size:13px;margin-top:6px;padding:8px;border-radius:8px}
+  .warn.no{background:#fdecea;color:var(--red)} .warn.ok{background:var(--gl);color:#3b7d2e}
+  .consent{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.5}
+  .consent input{width:auto;margin-top:3px;accent-color:var(--b)}
+  .btn{width:100%;padding:14px;border:0;border-radius:10px;background:linear-gradient(90deg,var(--g),var(--b));color:#fff;font-size:16px;font-weight:600}
+  .btn:disabled{opacity:.5}
+  .result{text-align:center;padding:24px 14px}
+  .result .icon{font-size:44px}
+  .result p{line-height:1.6}
+  .case{border-left:4px solid var(--bd)}
+  .case.s-有效,.case.s-成交{border-left-color:var(--g)}
+  .case.s-待確認{border-left-color:var(--amb)}
+  .case .top{display:flex;justify-content:space-between;gap:8px}
+  .case b{font-size:15px}
+  .badge{font-size:12px;padding:2px 8px;border-radius:10px;background:var(--bl);color:var(--deep);white-space:nowrap;align-self:flex-start}
+  .meta{font-size:13px;color:var(--mu);margin-top:6px;line-height:1.6}
+  .svc h3{margin:0 0 6px;font-size:15px;color:var(--deep)}
+  .svc ul{margin:0;padding-left:20px;font-size:14px;line-height:1.7}
+  .svc .tag{display:inline-block;font-size:12px;color:#fff;background:var(--g);border-radius:10px;padding:1px 8px;margin-bottom:8px}
+  .svc .tag.b{background:var(--b)}
+  .contact p{margin:6px 0;font-size:14px;line-height:1.6}
+  .contact a.btn{display:block;text-align:center;text-decoration:none;margin-top:10px}
+  .center{text-align:center;color:var(--mu);padding:40px 0}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFwAAABcCAMAAADUMSJqAAAAkFBMVEUAAABSr+4bnuhjslD3+fev1YyQx3JIpznM46FuxPWp4u+V0O6g0+zZ7eA6oS6o4aCtra2o2Oyp1Z12wmJ8fHxprGiqzKJutPp69vg1ejJ2urqLutysr2Grrfni7asAAP+Qsovu+cZtuOB78nqLuYVuyueYznQkbbZ/f/+Du+HY6tlsr9SFvHb//3jM4bUAf/8OFjTiAAAAMHRSTlMA/P78Evz9/vz5HOGoWP0XA2SW/QIFZQMCAwOkBgMZAVbzoAbNpxwDAtWXae0CpwKHFVNyAAAHAElEQVR42q2ZiXriOgyF5VghZCMk7KGFKXTvTPv+b3cl2yF2NgK9+tqZQsKfw7FsyzbAUJzVv4h/AHzJEatIkhyRr2wQ7o25BiuqhGL9mmUYRVGS6EfoBzzehV4xWpEB0oZCTHP1hITfj/AO1bj+S2R/rT+7yrLz+Yy4nUeReUAShiLm50Y3odnrtQwCWTB5t8oa1xFL9V8eh2H8SfdsR6Nxp9Azjc56vjVGP4wPCZ8DlGPZ9PMsNXo16Cdu6DcJhYgRjjjObVzL2Uya51wRQvg0FkLkOC5vEOQsYNmjtBAeE6InOMZu7bZOxVFBucLWiBze8Irdf8iSxSfsbkheEh8RPaR2XQ6x2ZKZTEdacokNpKG2pvdzS0Bfs3e39rkIkOCcNfMe3Sv0A/IE4OH2wSKCyNDf+wYT1l1ANtwqfRfyUNE3546rZEXAHX7AE4SBJnsEzkiRUAO0IlODSTDB3b++j5fw8NxrKsdeCI8yMmr3y5S6zkxivynzKE0k3dCnffvOjeqJtEmnHJLalGzAkziMmT7vNSYnticaCYkPNFQRfIGr/iEnj5NYDNLf8MTSBTrT34oNl8Ei7RVOvDwWSeh9yH7rSLKSntuNOtemBNAr/BGQdIciIekDDbOhNvU8NmZrdU1QjuOu50PzDD9JN42t1Oyzfvr8qKR7H3WrZ5QpgZSUhlUx0RoXgCZj0p2EzFb0eecA9gaxkp4fq4xZUWsSW67hz7prpF1Btma0EJ8QzDT90NauZ4CU4Z6oXFfdh+GIUnY0qb5OliTJczAzdB+b2fx+POxpXEQNz83EtFPCJeV4Ecza9JUa4mdET0g3tzvxIYwbdDxyY9I9e03Hn6r/cCzWnDItumIzUCbSsCmtQtGgIxz2ugdFRrpyncZXXbCRKzNNf3XZGjgLpC9nF7ZLX/78U2zOQgWnhHlXwv/qYlDno6s9u7ApqH5TdKBahae1mr48Gjb5gpUvhObOqVwp8NlIrOk7mx34IXchzeaxm+ml1k2e8KBFEWOu4Tz2Lk1zygwqzsWZlcNWGRNLzWa4mnhI+yPrruACtOksHUxzygliDWI6LhtsQw8tuCq1CKHZQnd9tODrCp5aJC4AoMlm28PQgROdomLrzlnBqQjDwsAZZWlfI10JHDq99OMGnPDx5U8NN+lCBgEYy31ccT/VEeg/Vb+13yswjptwO3RDxl7li0lE6Vf+VCyWar+m4Z6KvAu9h133UYZnf00mQiEHg9lU5GESDyr3EviqTK+QVAoVo9gVfcAWA6fHFItK+XoQrtmqRyeD8OgCPwEYuA+D9Ip9ofezK88pXXx5gQ/Qa7aix93ChRem1OlNtrhwGmYW19lGeyebdG+O8NGC8wTaRye2s/LqpRMbjqaHMnwiq05Ec+65k+7q7qWz7pKLEBs+4ZCTA0/oXdpV32mXPy06+f2oaqAa7k9MfKtBvE2fFF0LpI5W1YN7CXkHvMAHU9lNGuzOih/1CtH1W+2S7DvgvilOXe2Lom81Uaol3CVSXcFh7YoDP6Ca3JbLaixT8HPfSmOOkSN8uzRFZRecvv/KrOls+GvfancOLlyXhyUtXmp4MWn4QnDL9MmN8B+supDnhTY8VWvEX8FtV2jgWte+THHZhmc3wvc1PIHUb/jC6+hF9daC4A/j4Xau8GSBFrxg0NJ+a3Ib3G5OVVv4Dem/gJs1UQ3HwoJPyeBfwEvcW/CYbmLTfRUqYfB+OPKyohbOe0foWzFVU/B98HmJlxLAWP4A3y49uxdudhZqeMmLfhtOxvyz4f5o+DuNtRZcrXTJhWnTmLvgeq+ohqtOc4DvBv0u+BY/HPhJDe9N6f40deHzUfD0w67pPJHqZW7WkO47r8bCY6dgpNWLnmMQUxfu3wNv1LqX/aLXpvT/AY5RPddOL+FPp7+H21tRB/icWngnDvfAY2sjDDPsY98Bb+5yqXTsZE8P2AMvsU+5uw3F9E/CTtvtOj10nqfg4xu0lVdjLT5iYx932h2oj5vetpv3rYr3zfZNZzCGnfCwtRftZIwDP4kkbStPQYTYqbyqvdz9oPSpg/2N+hOnPI9QRZTmJ81pF7pO93G1px3wFDwrhLBf6R351mJu09X8hy46ODg3RKPO5USJcdO90XxoOfOEX95AvGDcYvcedjV9f0LwBiN36GpO7j+no/mzpj894ZAphm41anjlIIUyksQ/UUw/U9x7V+MF9YI6FGGO1w5fUY3vFIhfwhsRgu/P85T72tXTPzyor3YaRTb80xew22POLUvMbyCbLp/gyANdXqjdxo5vOBAreUfoBtkpf91bjvIgfRmJzuGWY2Iwd+PLVe/vOeBWR8xvfMQ8yOfUvgN9UU/8JOwEvyjynWhFLo/mAS+88aRH3TB8STT4eKVH/geX7386hDRTzAAAAABJRU5ErkJggg==" alt="御宇國際">
+  <div>
+    <h1>御宇國際 顧問報備</h1>
+    <p id="hello">載入中…</p>
+  </div>
+</header>
+<nav class="tabs">
+  <button class="tab on" data-t="form">新增報備</button>
+  <button class="tab" data-t="list">我的案件</button>
+  <button class="tab" data-t="svc">產品服務</button>
+</nav>
+
+<main>
+  <div id="loading" class="center">連線中，請稍候…</div>
+
+  <!-- 報備表單 -->
+  <form id="form" class="hidden" autocomplete="off">
+    <div class="card">
+      <h2>顧問資料</h2>
+      <div class="row">
+        <div><label>姓名 <span class="req">*</span></label><input name="agentName" required></div>
+        <div><label>手機 <span class="req">*</span></label><input name="agentPhone" inputmode="tel" placeholder="09xxxxxxxx" required></div>
+      </div>
+      <label>所屬單位</label><input name="agentOrg" placeholder="公司／社團／協會">
+      <div class="hint">第一次填寫後會自動記住。</div>
+    </div>
+
+    <div class="card">
+      <h2>客戶資料</h2>
+      <label>機構／公司名稱 <span class="req">*</span></label>
+      <input name="orgName" required placeholder="例：○○大飯店、○○醫院、○○工業">
+      <label>統一編號</label>
+      <input name="taxId" inputmode="numeric" maxlength="8" placeholder="8 碼數字，查重用，建議填寫">
+      <div id="dupMsg" class="warn hidden"></div>
+      <div class="row">
+        <div><label>客戶類型 <span class="req">*</span></label>
+          <select name="orgType" required>
+            <option value="">請選擇</option>
+            <option>飯店／旅館</option><option>醫院／長照機構</option><option>學校</option>
+            <option>團膳業者</option><option>餐廳／連鎖餐飲</option><option>市場／商場美食街</option>
+            <option>工廠／企業廠辦</option><option>辦公大樓／物業管理</option><option>農畜牧養殖場</option>
+            <option>建設公司／建案</option><option>軍營／矯正機關</option><option>政府機關</option>
+            <option>住宅／個人</option><option>其他</option>
+          </select></div>
+        <div><label>縣市 <span class="req">*</span></label>
+          <select name="city" required>
+            <option value="">請選擇</option>
+            <option>臺北市</option><option>新北市</option><option>基隆市</option><option>桃園市</option>
+            <option>新竹市</option><option>新竹縣</option><option>苗栗縣</option><option>臺中市</option>
+            <option>彰化縣</option><option>南投縣</option><option>雲林縣</option><option>嘉義市</option>
+            <option>嘉義縣</option><option>臺南市</option><option>高雄市</option><option>屏東縣</option>
+            <option>宜蘭縣</option><option>花蓮縣</option><option>臺東縣</option><option>澎湖縣</option>
+            <option>金門縣</option><option>連江縣</option>
+          </select></div>
+      </div>
+      <label>地址</label><input name="address">
+    </div>
+
+    <div class="card">
+      <h2>需求項目 <span class="req" style="color:var(--red)">*</span></h2>
+      <div class="chips" id="needs">
+        <label><input type="checkbox" value="廚餘處理">廚餘處理</label>
+        <label><input type="checkbox" value="截油槽／管路除油">截油槽／管路除油</label>
+        <label><input type="checkbox" value="除臭殺菌／空氣淨化">除臭殺菌／空氣淨化</label>
+        <label><input type="checkbox" value="除霉除醛／除TVOC">除霉除醛／除TVOC</label>
+        <label><input type="checkbox" value="水質淨化消毒">水質淨化消毒</label>
+        <label><input type="checkbox" value="冷媒冰機節能">冷媒冰機節能</label>
+        <label><input type="checkbox" value="工廠智能化">工廠智能化</label>
+        <label><input type="checkbox" value="生物膜預防">生物膜預防</label>
+        <label><input type="checkbox" value="健康塗料／綠建材">健康塗料／綠建材</label>
+        <label><input type="checkbox" value="政府補助計畫">政府補助計畫</label>
+        <label><input type="checkbox" value="其他／不確定">其他／不確定</label>
+      </div>
+      <div class="hint">可複選。</div>
+
+      <div id="wasteBox" class="hidden">
+        <label>估計每日廚餘量 <span class="req">*</span></label>
+        <select name="wasteVolume">
+          <option value="">請選擇</option>
+          <option>100 公斤以下</option><option>100–200 公斤</option><option>200–500 公斤</option>
+          <option>500 公斤以上</option><option>不清楚</option>
+        </select>
+        <label>目前廚餘處理方式</label>
+        <select name="currentMethod">
+          <option value="">請選擇</option>
+          <option>委外清運業者</option><option>養豬戶回收</option><option>自行處理／已有設備</option>
+          <option>環保局清運</option><option>不清楚</option><option>其他</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>關鍵聯絡人</h2>
+      <div class="row">
+        <div><label>姓名 <span class="req">*</span></label><input name="contactName" required></div>
+        <div><label>職稱</label><input name="contactTitle" placeholder="總務／廠長／主廚"></div>
+      </div>
+      <label>電話 <span class="req">*</span></label><input name="contactPhone" inputmode="tel" required>
+      <label>與您的關係 <span class="req">*</span></label>
+      <div class="chips">
+        <label><input type="radio" name="relation" value="熟識可引薦" required>熟識可引薦</label>
+        <label><input type="radio" name="relation" value="認識">認識</label>
+        <label><input type="radio" name="relation" value="僅知道">僅知道</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>拜訪安排</h2>
+      <label>御宇可否直接聯繫對方？ <span class="req">*</span></label>
+      <div class="chips">
+        <label><input type="radio" name="canContact" value="可直接聯繫" required>可直接聯繫</label>
+        <label><input type="radio" name="canContact" value="須由顧問先聯繫">須由我先聯繫</label>
+      </div>
+      <label>是否陪同拜訪？</label>
+      <div class="chips">
+        <label><input type="radio" name="accompany" value="陪同">我會陪同</label>
+        <label><input type="radio" name="accompany" value="不陪同">不陪同</label>
+      </div>
+      <label>建議拜訪時間</label><input name="visitTime" placeholder="例：平日上午、10/20 後">
+      <label>備註</label><textarea name="note" placeholder="現場問題、決策者、預算、急迫性等"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="consent">
+        <input type="checkbox" id="consent">
+        <label for="consent" style="margin:0">本人已取得上述聯絡人同意，提供其姓名、職稱及電話予御宇國際企業有限公司，作為環境治理產品與服務介紹及拜訪聯繫之用。</label>
+      </div>
+    </div>
+
+    <button class="btn" id="submitBtn" type="submit">送出報備</button>
+    <div class="hint" style="text-align:center;margin-top:8px">報備先後以系統時間為準，保護期 90 天</div>
+  </form>
+
+  <!-- 送出結果 -->
+  <div id="result" class="card result hidden">
+    <div class="icon" id="rIcon"></div>
+    <p id="rMsg"></p>
+    <button class="btn" id="again">再報備一筆</button>
+  </div>
+
+  <!-- 我的案件 -->
+  <div id="list" class="hidden"></div>
+
+  <!-- 產品服務 -->
+  <div id="svc" class="hidden">
+    <div class="card svc">
+      <span class="tag">企業廠辦／餐飲機構</span>
+      <h3>廚餘與油脂處理</h3>
+      <ul>
+        <li>BM 微生物分解廚餘處理機，現場分解減量，降低清運需求</li>
+        <li>截油槽、排水管路除油與除臭</li>
+        <li>適合每日大量廚餘的飯店、醫院、學校、團膳</li>
+      </ul>
+    </div>
+    <div class="card svc">
+      <span class="tag">企業廠辦／農畜牧養殖場</span>
+      <h3>環境綜合治理</h3>
+      <ul>
+        <li>除霉除醛、殺菌除臭、空氣淨化（RGF）</li>
+        <li>水質淨化消毒</li>
+        <li>冷媒冰機節能、工廠智能化</li>
+        <li>去除異味與預防生物膜</li>
+        <li>協助政府相關補助計畫研擬</li>
+      </ul>
+    </div>
+    <div class="card svc">
+      <span class="tag b">健康建築／室內空間治理</span>
+      <h3>健康建材</h3>
+      <ul>
+        <li>抗病毒抗菌、淨化空氣的健康塗料</li>
+        <li>玻璃與自潔玻璃等綠建材</li>
+        <li>長效除甲醛、除 TVOC，預防生物感染</li>
+      </ul>
+    </div>
+    <div class="card contact">
+      <h2>聯絡御宇國際</h2>
+      <p><b>御宇國際企業有限公司</b><br>EMPIRE-YUYU INTERNATIONAL LTD</p>
+      <p>聯絡人：鄧昌勝<br>電話：+886-933-540863<br>E-mail：ha52hi1974@gmail.com<br>地址：新北市板橋區民生路一段28-11號11樓</p>
+      <a class="btn" href="tel:+886933540863">撥打電話</a>
+    </div>
+  </div>
+</main>
+
+<script>
+/******** 設定區 ********/
+const LIFF_ID = '2012023290-1MVnfTqT';            // 例：2001234567-AbCdEfGh
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxlbCTV9QIBRMLnBoHAtrgpO8H3mH2jJ9KfRxBtK9QyvbpzUGsRrbWPDOh3h5q0QHN-/exec';     // 例：https://script.google.com/macros/s/xxxx/exec
+/*********************************/
+
+const $ = s => document.querySelector(s);
+const form = $('#form');
+
+async function api(action, data) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, idToken: liff.getIDToken(), data })
+  });
+  return res.json();
+}
+
+function show(id) {
+  ['loading', 'form', 'result', 'list', 'svc'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
+}
+
+function openTab(name) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === name));
+  if (name === 'list') loadCases(); else show(name);
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => openTab(t.dataset.t));
+
+const getNeeds = () => [...document.querySelectorAll('#needs input:checked')].map(x => x.value);
+
+// 勾選「廚餘處理」才顯示廚餘量欄位
+$('#needs').addEventListener('change', () => {
+  const on = getNeeds().includes('廚餘處理');
+  $('#wasteBox').classList.toggle('hidden', !on);
+  form.wasteVolume.required = on;
+});
+
+// 名稱／統編輸入後預先查重
+let checkTimer;
+['orgName', 'taxId', 'city'].forEach(n => form[n].addEventListener('change', () => {
+  clearTimeout(checkTimer);
+  checkTimer = setTimeout(async () => {
+    const box = $('#dupMsg');
+    if (!form.orgName.value.trim() && !form.taxId.value.trim()) { box.classList.add('hidden'); return; }
+    try {
+      const r = await api('check', { orgName: form.orgName.value, taxId: form.taxId.value, city: form.city.value });
+      if (!r.ok) return;
+      box.className = 'warn ' + (r.available ? 'ok' : 'no');
+      box.textContent = r.available ? '✓ 目前尚無人報備此客戶' : '⚠ ' + r.message;
+    } catch (e) {}
+  }, 300);
+}));
+
+form.onsubmit = async e => {
+  e.preventDefault();
+  const needs = getNeeds();
+  if (!needs.length) { alert('請至少勾選一項需求項目'); return; }
+  if (!$('#consent').checked) { alert('請勾選個資同意聲明'); return; }
+  const data = Object.fromEntries(new FormData(form).entries());
+  data.needs = needs.join('、');
+  if (!needs.includes('廚餘處理')) { data.wasteVolume = ''; data.currentMethod = ''; }
+  data.consent = true;
+  const btn = $('#submitBtn');
+  btn.disabled = true; btn.textContent = '送出中…';
+  try {
+    const r = await api('submit', data);
+    if (!r.ok) { alert(r.message); return; }
+    $('#rIcon').textContent = r.accepted ? '✅' : '⚠️';
+    $('#rMsg').textContent = r.message;
+    show('result');
+    if (r.accepted) {
+      const keep = { agentName: data.agentName, agentPhone: data.agentPhone, agentOrg: data.agentOrg };
+      form.reset();
+      Object.keys(keep).forEach(k => form[k].value = keep[k]);
+      $('#wasteBox').classList.add('hidden');
+      form.wasteVolume.required = false;
+      $('#dupMsg').classList.add('hidden');
+    }
+  } catch (err) {
+    alert('連線失敗，請稍後再試');
+  } finally {
+    btn.disabled = false; btn.textContent = '送出報備';
+  }
+};
+
+$('#again').onclick = () => openTab('form');
+
+async function loadCases() {
+  show('list');
+  const box = $('#list');
+  box.innerHTML = '<div class="center">讀取中…</div>';
+  const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  try {
+    const r = await api('myCases');
+    if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
+    if (!r.cases.length) { box.innerHTML = '<div class="center">尚無報備案件</div>'; return; }
+    box.innerHTML = r.cases.map(c =>
+      '<div class="card case s-' + esc(c.status) + '">' +
+        '<div class="top"><b>' + esc(c.org) + '</b><span class="badge">' + esc(c.status) + '</span></div>' +
+        '<div class="meta">' +
+          esc(c.id) + '｜' + esc(c.city) + '<br>' +
+          (c.needs ? '需求：' + esc(c.needs) + '<br>' : '') +
+          '報備：' + esc(c.time) + '｜階段：' + (esc(c.stage) || '—') + '<br>' +
+          '保護期至：' + (esc(c.protectUntil) || '—') +
+          (c.reply ? '<br>御宇回覆：' + esc(c.reply) : '') +
+        '</div>' +
+      '</div>').join('');
+  } catch (e) {
+    box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>';
+  }
+}
+
+(async function start() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+    const r = await api('init');
+    if (!r.ok) { $('#loading').textContent = r.message; return; }
+    $('#hello').textContent = '您好，' + (r.agent ? r.agent.name : r.lineName) + '｜報備先後以系統時間為準';
+    if (r.agent) {
+      form.agentName.value = r.agent.name || '';
+      form.agentPhone.value = r.agent.phone || '';
+      form.agentOrg.value = r.agent.org || '';
+    }
+    // 圖文選單可帶 ?tab=list 或 ?tab=svc 直接開啟對應分頁
+    const tab = new URLSearchParams(location.search).get('tab');
+    openTab(['list', 'svc'].includes(tab) ? tab : 'form');
+  } catch (e) {
+    $('#loading').textContent = '初始化失敗：' + e.message;
+  }
+})();
+</script>
+</body>
+</html>
