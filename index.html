@@ -308,13 +308,28 @@ const STAGES = ['報備', '初訪', '場勘', '評估通過', '報價', '簽約'
 const LV = { 'A級': 'A', 'B級': 'B', '個人合作': 'P' };
 let ME = { agent: null, isAdmin: false, prices: {}, models: [] };
 
+// 登入憑證過期時自動重新登入
+function tokenExpired() {
+  try { const t = liff.getDecodedIDToken(); return !t || !t.exp || t.exp * 1000 < Date.now() + 60000; } catch (e) { return true; }
+}
+function relogin() {
+  let n = 0;
+  try { n = +sessionStorage.getItem('relogin') || 0; sessionStorage.setItem('relogin', n + 1); } catch (e) {}
+  if (n >= 2) { $('#loading').textContent = 'LINE 登入失敗，請完全關閉此頁面後重新開啟。'; show('loading'); return; }
+  try { liff.logout(); } catch (e) {}
+  if (liff.isInClient()) location.reload();
+  else liff.login({ redirectUri: location.href });
+}
 async function api(action, data) {
+  if (tokenExpired()) { relogin(); throw new Error('relogin'); }
   const res = await fetch(GAS_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action, idToken: liff.getIDToken(), data })
   });
-  return res.json();
+  const j = await res.json();
+  if (!j.ok && /登入已過期/.test(j.message || '')) { relogin(); throw new Error('relogin'); }
+  return j;
 }
 
 function show(id) {
@@ -601,9 +616,10 @@ async function saveCase(btn) {
 (async function start() {
   try {
     await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+    if (!liff.isLoggedIn() || tokenExpired()) { relogin(); return; }
     const r = await api('init');
     if (!r.ok) { $('#loading').textContent = r.message; return; }
+    try { sessionStorage.removeItem('relogin'); } catch (e) {}
     ME = r;
     const a = r.agent;
     $('#hello').textContent = '您好，' + (a ? (a.name || r.lineName) + (a.company ? '｜' + a.company : '') : r.lineName);
@@ -614,7 +630,7 @@ async function saveCase(btn) {
     if (!canReport() && tab !== 'svc') { showReg(); return; }
     openTab(['list', 'svc'].includes(tab) || (tab === 'admin' && r.isAdmin) ? tab : 'form');
   } catch (e) {
-    $('#loading').textContent = '初始化失敗：' + e.message;
+    if (e.message !== 'relogin') $('#loading').textContent = '初始化失敗：' + e.message + '（請關閉後重新開啟）';
   }
 })();
 </script>
