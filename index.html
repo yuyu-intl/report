@@ -626,6 +626,7 @@ async function loadAdmin() {
           '<div class="row"><div><select id="lv' + i + '">' + ['A級', 'B級', '個人合作'].map(x => '<option' + (x === a.applied ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
           '<div><button class="btn sm" onclick="approveAgent(' + i + ')">核准</button></div>' +
           '<div><button class="btn sm gray" onclick="setAgent(' + i + ', {status:\'停用\'})">不核准</button></div></div>' +
+          '<button class="btn sm gray" style="margin-top:6px" onclick="toggleAdmin(' + i + ')">設為御宇管理員</button>' +
         '</div>';
       }).join('') + '</div>';
     }
@@ -635,7 +636,7 @@ async function loadAdmin() {
       const i = adminAgents.indexOf(a);
       return '<div class="card agent" onclick="loadAdminCases(adminAgents[' + i + '].id)">' +
         '<div class="top"><b>' + esc(a.company || a.name) + ' <small>' + esc(a.name) + '</small></b>' +
-          '<span class="badge">' + (esc(a.level) || '未設級別') + (a.status === '停用' ? '・停用' : '') + '</span></div>' +
+          '<span class="badge">' + (a.isAdmin ? '管理員・' : '') + (esc(a.level) || '未設級別') + (a.status === '停用' ? '・停用' : '') + '</span></div>' +
         '<div class="stats"><div><b>' + a.total + '</b>報備</div><div><b>' + a.pending + '</b>待確認</div>' +
           '<div><b>' + a.won + '</b>成交</div><div><b>' + a.halfWon + '</b>本半年</div></div>' +
         '<div class="meta">' + esc(a.code || '') + '｜' + (a.upline ? '上線 ' + esc(a.uplineName) : a.level === 'A級' ? '直屬御宇' : '直屬御宇（無上線）') + '<br>' +
@@ -647,6 +648,7 @@ async function loadAdmin() {
         (a.level !== 'A級' ? '<div onclick="event.stopPropagation()" style="margin-top:6px"><select onchange="setAgent(' + i + ', {upline:this.value})">' +
           '<option value="">上線：直屬御宇</option>' + leaders(a.id).map(x => '<option value="' + esc(x.id) + '"' + (x.id === a.upline ? ' selected' : '') + '>上線：' + esc(x.company || x.name) + '</option>').join('') +
           '</select></div>' : '') +
+        (a.builtinAdmin ? '' : '<div onclick="event.stopPropagation()" style="margin-top:6px"><button class="btn sm gray" onclick="toggleAdmin(' + i + ')">' + (a.isAdmin ? '取消管理員權限' : '設為御宇管理員') + '</button></div>') +
       '</div>';
     }).join('');
     box.innerHTML = h;
@@ -677,6 +679,11 @@ async function setAgent(i, patch) {
   const r = await api('adminAgentUpdate', Object.assign({ id: a.id }, patch));
   if (!r.ok) alert(r.message);
   loadAdmin();
+}
+function toggleAdmin(i) {
+  const a = adminAgents[i];
+  if (!confirm(a.isAdmin ? '確定取消「' + (a.name || a.company) + '」的管理員權限？' : '確定將「' + (a.name || a.company) + '」設為御宇管理員？管理員可審核所有經銷商、修改案件與發放紀錄。')) return;
+  setAgent(i, { admin: !a.isAdmin });
 }
 function approveAgent(i) { setAgent(i, { level: $('#lv' + i).value, status: '已核准' }); }
 
