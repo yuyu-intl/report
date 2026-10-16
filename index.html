@@ -95,6 +95,14 @@
   .feesum.f3{grid-template-columns:1fr 1fr 1fr}
   .invite{background:var(--bl);border-radius:8px;padding:10px;font-size:13px;word-break:break-all;color:var(--deep);margin:8px 0}
   .invite b{font-size:20px;letter-spacing:2px}
+  .perf{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px 10px;font-size:14px;align-items:center}
+  .perf .h{font-size:12px;color:var(--mu);text-align:right}
+  .perf b{text-align:right;font-size:16px;color:var(--deep)}
+  .perf .k{color:var(--mu)}
+  .perf .tot{border-top:1px solid var(--bd);padding-top:6px}
+  .yr{display:flex;align-items:center;justify-content:space-between;margin:4px 0 10px}
+  .yr button{border:1px solid var(--bd);background:#fff;border-radius:8px;padding:4px 12px;font-size:16px}
+  table.mt td .bar{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--g),var(--b));margin-top:3px}
   .tree{border-left:3px solid var(--g);padding-left:10px;margin-top:8px}
   .tree div{padding:4px 0;font-size:14px;border-bottom:1px dashed var(--bd)}
   .tree div:last-child{border-bottom:0}
@@ -537,7 +545,8 @@ async function loadTeam() {
     const url = inviteUrl(r.code);
     const shareText = '邀請您加入御宇國際廚餘機經銷團隊！點此登記（推薦碼 ' + r.code + '）：' + url;
     const s = r.summary;
-    let h = '<div class="card"><h2>邀請夥伴加入</h2>' +
+    let h = '<div class="card" id="perfCard">' + perfHtml(r.perf) + '</div>' +
+      '<div class="card"><h2>邀請夥伴加入</h2>' +
       '<div class="hint">把連結傳給想加入的夥伴，對方登記後會出現在下方「待審核」，由您核准並設定為 B 級或個人合作。御宇會同步收到通知。</div>' +
       '<div class="invite">我的邀請碼 <b>' + esc(r.code) + '</b><br>' + esc(url) + '</div>' +
       '<div class="row"><div><a class="btn sm" href="https://line.me/R/share?text=' + encodeURIComponent(shareText) + '">用 LINE 分享</a></div>' +
@@ -572,6 +581,42 @@ async function loadTeam() {
         (c.reply ? '<div class="meta">御宇回覆：' + esc(c.reply) + '</div>' : '') + '</div>').join('') + '</div>';
     }
     box.innerHTML = h;
+  } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
+}
+function perfHtml(p) {
+  const n = x => (Math.round(x * 10) / 10).toLocaleString();
+  const c = p.current, t = p.total;
+  const row = (k, a, b, cls) => '<span class="k' + (cls ? ' ' + cls : '') + '">' + k + '</span><b' + (cls ? ' class="' + cls + '"' : '') + '>' + a + '</b><b' + (cls ? ' class="' + cls + '"' : '') + '>' + b + '</b>';
+  const z = c || { ownUnits: 0, ownSales: 0, teamUnits: 0, teamSales: 0, fee: 0, ov: 0 };
+  let h = '<h2>業績總覽</h2>' +
+    '<div class="yr"><button onclick="loadPerf(' + (p.year - 1) + ')">‹</button><b>' + p.year + ' 年</b><button onclick="loadPerf(' + (p.year + 1) + ')">›</button></div>' +
+    '<div class="perf"><span></span><span class="h">' + (c ? '本月' : '—') + '</span><span class="h">全年</span>' +
+      row('我的成交台數', z.ownUnits, t.ownUnits) +
+      row('我的營業額（萬）', n(z.ownSales), n(t.ownSales)) +
+      row('團隊成交台數', z.teamUnits, t.teamUnits) +
+      row('團隊營業額（萬）', n(z.teamSales), n(t.teamSales)) +
+      row('合計營業額（萬）', n(z.ownSales + z.teamSales), n(t.ownSales + t.teamSales), 'tot') +
+      row('我的服務費（萬）', n(z.fee), n(t.fee)) +
+      row('團隊差價（萬）', n(z.ov), n(t.ov)) +
+      row('獎金合計（萬）', n(z.fee + z.ov), n(t.fee + t.ov), 'tot') +
+    '</div>' +
+    ((p.pending.fee || p.pending.ov) ? '<div class="hint">另有已成交、尚未結算的獎金：服務費 ' + n(p.pending.fee) + ' 萬、團隊差價 ' + n(p.pending.ov) + ' 萬。</div>' : '');
+  const max = Math.max.apply(null, p.months.map(m => m.ownSales + m.teamSales).concat([1]));
+  const active = p.months.filter(m => m.ownUnits || m.teamUnits || m.fee || m.ov);
+  h += active.length ? '<table class="mt" style="margin-top:10px"><tr><th>月份</th><th>台數｜營業額</th><th>獎金</th></tr>' +
+    active.map(m => '<tr><td>' + esc(m.month.slice(5)) + ' 月</td><td>' + (m.ownUnits + m.teamUnits) + ' 台｜' + n(m.ownSales + m.teamSales) + ' 萬' +
+      '<div class="bar" style="width:' + Math.round((m.ownSales + m.teamSales) / max * 100) + '%"></div></td>' +
+      '<td class="num">' + n(m.fee + m.ov) + ' 萬</td></tr>').join('') + '</table>'
+    : '<div class="meta" style="margin-top:8px">' + p.year + ' 年尚無成交紀錄</div>';
+  h += '<div class="hint">營業額依簽約日（成交價、未稅）計算；獎金依驗收且全額付清的月份計算。</div>';
+  return h;
+}
+async function loadPerf(year) {
+  const box = $('#perfCard');
+  box.innerHTML = '<div class="center">讀取中…</div>';
+  try {
+    const r = await api('myPerf', { year: year });
+    box.innerHTML = r.ok ? perfHtml(r.perf) : '<div class="center">' + esc(r.message) + '</div>';
   } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
 }
 function custDetail(c) {
