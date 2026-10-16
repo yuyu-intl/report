@@ -92,6 +92,14 @@
   .mt .num{text-align:right;white-space:nowrap}
   .mt .sum td{font-weight:600;border-bottom:0}
   .feesum{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .feesum.f3{grid-template-columns:1fr 1fr 1fr}
+  .invite{background:var(--bl);border-radius:8px;padding:10px;font-size:13px;word-break:break-all;color:var(--deep);margin:8px 0}
+  .invite b{font-size:20px;letter-spacing:2px}
+  .tree{border-left:3px solid var(--g);padding-left:10px;margin-top:8px}
+  .tree div{padding:4px 0;font-size:14px;border-bottom:1px dashed var(--bd)}
+  .tree div:last-child{border-bottom:0}
+  .refbox{background:#eef8ec;border:1px solid #cfe9c8;border-radius:8px;padding:10px;font-size:14px;margin-bottom:10px}
+  tr.team td{background:#f4fbf2}
   .feesum div{background:var(--bl);border-radius:8px;padding:8px;text-align:center;font-size:12px;color:var(--deep)}
   .feesum b{display:block;font-size:18px}
 </style>
@@ -108,6 +116,7 @@
   <button class="tab on" data-t="form">新增報備</button>
   <button class="tab" data-t="list">我的案件</button>
   <button class="tab" data-t="svc">產品服務</button>
+  <button class="tab hidden" data-t="team" id="teamTab">我的團隊</button>
   <button class="tab hidden" data-t="admin" id="adminTab">管理後台</button>
 </nav>
 
@@ -117,6 +126,7 @@
   <!-- 經銷商登記 -->
   <form id="reg" class="hidden" autocomplete="off">
     <div class="notice" id="regNote">歡迎加入御宇國際廚餘機通路。請先完成經銷商登記，御宇審核並設定級別後，即可開始報備。</div>
+    <div class="refbox hidden" id="refBox"></div>
     <div class="card">
       <h2>經銷商登記</h2>
       <label>經銷商名稱 <span class="req">*</span></label><input name="company" required placeholder="公司或個人工作室名稱">
@@ -126,13 +136,14 @@
         <div><label>手機</label><input name="phone" inputmode="tel" placeholder="選填"></div>
       </div>
       <label>負責區域 <span class="req">*</span></label><input name="region" required placeholder="例：臺中市、彰化縣">
+      <label>推薦人邀請碼</label><input name="ref" id="refInput" autocapitalize="characters" placeholder="由 A 級經銷商推薦者請填寫（例：YY001），無則留空">
       <label>申請級別 <span class="req">*</span></label>
       <div class="chips">
-        <label><input type="radio" name="level" value="A級" required>A 級經銷商</label>
+        <label id="lvA"><input type="radio" name="level" value="A級" required>A 級經銷商</label>
         <label><input type="radio" name="level" value="B級">B 級經銷商</label>
         <label><input type="radio" name="level" value="個人合作">個人合作夥伴</label>
       </div>
-      <div class="hint">A 級：具業務與基礎維護團隊；B 級：具業務能力、無維護團隊；個人合作夥伴：業務引薦。最終級別由御宇核定。</div>
+      <div class="hint">A 級：具業務與基礎維護團隊；B 級：具業務能力、無維護團隊；個人合作夥伴：業務引薦。<span id="lvHint">最終級別由御宇核定。</span></div>
     </div>
     <button class="btn" id="regBtn" type="submit">送出登記</button>
   </form>
@@ -252,6 +263,7 @@
   <div id="list" class="hidden"></div>
 
   <!-- 管理後台 -->
+  <div id="team" class="hidden"></div>
   <div id="admin" class="hidden"></div>
 
   <!-- 產品服務 -->
@@ -342,13 +354,14 @@ async function api(action, data) {
 }
 
 function show(id) {
-  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
+  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'team', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
   window.scrollTo(0, 0);
 }
 function openTab(name) {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === name));
   if (name === 'list') loadCases();
   else if (name === 'admin') loadAdmin();
+  else if (name === 'team') loadTeam();
   else if (name === 'form' && !canReport()) showReg();
   else show(name);
 }
@@ -357,16 +370,33 @@ const canReport = () => ME.isAdmin || (ME.agent && ME.agent.status === '已核�
 const feeOf = (model, level) => { const p = ME.prices[model], k = LV[level]; return p && k ? Math.round((p.retail - p[k]) * 10) / 10 : ''; };
 
 /* ===== 經銷商登記 ===== */
+function refMode() {
+  const on = !!reg.ref.value.trim() || reg.ref.disabled;
+  $('#lvA').style.display = on ? 'none' : '';
+  if (!ME.agent) $('#regNote').innerHTML = on ? '歡迎加入御宇國際廚餘機通路。請完成登記，推薦人審核並設定級別後，即可開始報備。'
+    : '歡迎加入御宇國際廚餘機通路。請先完成經銷商登記，御宇審核並設定級別後，即可開始報備。';
+  if (on && reg.querySelector('input[name=level][value="A級"]').checked) reg.querySelector('input[name=level][value="A級"]').checked = false;
+  $('#lvHint').textContent = on ? '透過推薦加入者，級別由推薦的 A 級經銷商審核設定。' : '最終級別由御宇核定。';
+}
+reg.ref.addEventListener('input', refMode);
 function showReg() {
   const a = ME.agent;
+  if (ME.ref && !(a && a.upline)) {
+    reg.ref.value = ME.ref.code;
+    $('#refBox').innerHTML = '🤝 您是由 <b>' + esc(ME.ref.company || ME.ref.name) + '</b>（' + esc(ME.ref.code) + '）推薦加入，登記後由推薦人審核。';
+    $('#refBox').classList.remove('hidden');
+  }
   if (a) {
     reg.company.value = a.company || ''; reg.taxId.value = a.taxId || ''; reg.name.value = a.name || '';
     reg.phone.value = a.phone || ''; reg.region.value = a.region || '';
     const lv = reg.querySelector('input[name=level][value="' + (a.applied || a.level || '') + '"]'); if (lv) lv.checked = true;
+    if (a.upline) { reg.ref.value = ''; reg.ref.disabled = true; reg.ref.placeholder = '推薦人：' + (a.uplineName || ''); }
     $('#regNote').innerHTML = a.status === '停用' ? '您的帳號已停用，如有疑問請洽御宇國際。'
-      : '⏳ 您的登記<b>審核中</b>（申請：' + esc(a.applied || '') + '）。御宇核准並設定級別後即可報備，如需修改資料可直接更新。';
+      : '⏳ 您的登記<b>審核中</b>（申請：' + esc(a.applied || '') + '）。' +
+        (a.upline ? '推薦人「' + esc(a.uplineName || '') + '」核准並設定級別後即可報備，' : '御宇核准並設定級別後即可報備，') + '如需修改資料可直接更新。';
     $('#regBtn').textContent = '更新登記資料';
   }
+  refMode();
   show('reg');
 }
 reg.onsubmit = async e => {
@@ -378,7 +408,7 @@ reg.onsubmit = async e => {
     if (!r.ok) { alert(r.message); return; }
     ME.agent = r.agent;
     if (canReport()) { alert('登記完成'); fillAgent(); openTab('form'); }
-    else { alert('登記已送出，御宇審核後即可開始報備。'); showReg(); }
+    else { alert(r.agent && r.agent.upline ? '登記已送出，推薦人審核後即可開始報備。' : '登記已送出，御宇審核後即可開始報備。'); showReg(); }
   } catch (err) { alert('連線失敗，請稍後再試'); }
   finally { btn.disabled = false; if (btn.textContent === '送出中…') btn.textContent = '送出登記'; }
 };
@@ -493,6 +523,80 @@ async function loadCases() {
   }
 }
 
+/* ===== 我的團隊（A 級經銷商） ===== */
+let teamData = null;
+const inviteUrl = code => 'https://liff.line.me/' + LIFF_ID + '?ref=' + encodeURIComponent(code);
+async function loadTeam() {
+  show('team');
+  const box = $('#team');
+  box.innerHTML = '<div class="center">讀取中…</div>';
+  try {
+    const r = await api('myTeam');
+    if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
+    teamData = r;
+    const url = inviteUrl(r.code);
+    const shareText = '邀請您加入御宇國際廚餘機經銷團隊！點此登記（推薦碼 ' + r.code + '）：' + url;
+    const s = r.summary;
+    let h = '<div class="card"><h2>邀請夥伴加入</h2>' +
+      '<div class="hint">把連結傳給想加入的夥伴，對方登記後會出現在下方「待審核」，由您核准並設定為 B 級或個人合作。御宇會同步收到通知。</div>' +
+      '<div class="invite">我的邀請碼 <b>' + esc(r.code) + '</b><br>' + esc(url) + '</div>' +
+      '<div class="row"><div><a class="btn sm" href="https://line.me/R/share?text=' + encodeURIComponent(shareText) + '">用 LINE 分享</a></div>' +
+      '<div><button class="btn sm gray" onclick="copyInvite()">複製連結</button></div></div></div>';
+    h += '<div class="card"><h2>團隊差價</h2><div class="feesum f3">' +
+      '<div><b>' + s.settled + ' 萬</b>已結算待發放</div><div><b>' + s.paid + ' 萬</b>已發放</div><div><b>' + s.pipeline + ' 萬</b>成交未結算</div></div>' +
+      '<div class="hint">團隊差價＝下線級別經銷價 − A 級經銷價（未稅），下線案件驗收且全額付清後併入當月月結。實際發放依御宇獎金辦法。</div></div>';
+    const waiting = r.members.filter(m => m.status === '待審核');
+    if (waiting.length) {
+      h += '<div class="card"><h2>待審核（' + waiting.length + '）</h2>' + waiting.map(m =>
+        '<div class="pending"><b>' + esc(m.company) + '</b>｜' + esc(m.name) + (m.phone ? '｜' + esc(m.phone) : '') +
+        '<div class="meta">區域 ' + (esc(m.region) || '—') + '｜申請 ' + (esc(m.applied) || '—') + '｜登記 ' + esc(m.joined) + '</div>' +
+        '<div class="row"><div><select id="tl_' + esc(m.id) + '">' + r.downLevels.map(x => '<option' + (x === m.applied ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
+        '<div><button class="btn sm" onclick="teamSet(\'' + esc(m.id) + '\', {level: $(\'#tl_' + esc(m.id) + '\').value, status: \'已核准\'})">核准</button></div>' +
+        '<div><button class="btn sm gray" onclick="teamSet(\'' + esc(m.id) + '\', {status: \'停用\'})">不核准</button></div></div></div>').join('') + '</div>';
+    }
+    const list = r.members.filter(m => m.status !== '待審核');
+    h += '<div class="card"><h2>我的夥伴（' + list.length + '）</h2>' + (list.length ? list.map(m =>
+      '<div class="pending"><div class="top"><b>' + esc(m.company || m.name) + ' <small>' + esc(m.name) + '</small></b>' +
+        '<span class="badge">' + (esc(m.level) || '—') + (m.status === '停用' ? '・停用' : '') + '</span></div>' +
+      '<div class="meta">' + esc(m.code) + '｜區域 ' + (esc(m.region) || '—') + '｜報備 ' + m.total + '｜成交 ' + m.won + '｜團隊差價 ' + m.ov + ' 萬</div>' +
+      '<div class="row"><div><select onchange="teamSet(\'' + esc(m.id) + '\', {level: this.value})">' + r.downLevels.map(x => '<option' + (x === m.level ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
+      '<div><button class="btn sm gray" onclick="teamSet(\'' + esc(m.id) + '\', {status: \'' + (m.status === '停用' ? '已核准' : '停用') + '\'})">' + (m.status === '停用' ? '恢復' : '停用') + '</button></div></div></div>').join('')
+      : '<div class="meta">尚無夥伴，分享邀請連結邀請夥伴加入。</div>') + '</div>';
+    if (r.cases.length) {
+      h += '<div class="card"><h2>團隊案件（' + r.cases.length + '）</h2>' + r.cases.map(c =>
+        '<div class="pending"><div class="top"><b>' + esc(c.org) + '</b><span class="badge">' + esc(c.status) + '</span></div>' +
+        '<div class="meta">' + esc(c.member) + '（' + (esc(c.memberLevel) || '—') + '）｜' + esc(c.city) + '｜報備 ' + esc(c.time) + '<br>' +
+        '階段：' + (esc(c.stage) || '—') + (c.model ? '｜機型 ' + esc(c.model) : '') +
+        (c.ov !== '' ? '｜團隊差價 <b>' + esc(c.ov) + ' 萬</b>' + (c.ovPaid ? '（已發 ' + esc(c.ovPaid) + '）' : c.settle ? '（' + esc(c.settle) + ' 結算）' : '') : '') +
+        '｜保護期至 ' + (esc(c.protectUntil) || '—') + '</div>' + progressBar(c.stage) + custDetail(c) +
+        (c.reply ? '<div class="meta">御宇回覆：' + esc(c.reply) + '</div>' : '') + '</div>').join('') + '</div>';
+    }
+    box.innerHTML = h;
+  } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
+}
+function custDetail(c) {
+  const row = (k, v) => v ? '<div><span class="k">' + k + '：</span>' + esc(v) + '</div>' : '';
+  return '<details class="detail"><summary>客戶與聯絡資料</summary>' +
+    row('統一編號', c.taxId) + row('類型', c.orgType) + row('地址', c.address) + row('每日廚餘量', c.waste) + row('目前處理', c.method) +
+    row('聯絡人', [c.contact, c.title].filter(Boolean).join('／')) + row('LINE ID', c.contactLine) + row('電話', c.contactPhone) +
+    row('關係', c.relation) + row('聯繫方式', c.canContact) + row('陪同拜訪', c.accompany) + row('建議時間', c.visitTime) +
+    row('報備備註', c.note) + row('報備人', [c.agent, c.agentPhone].filter(Boolean).join('／')) +
+  '</details>';
+}
+async function teamSet(id, patch) {
+  const m = teamData.members.find(x => x.id === id);
+  if (patch.status === '停用' && !confirm('確定' + (m.status === '待審核' ? '不核准' : '停用') + '「' + (m.company || m.name) + '」？')) return;
+  const r = await api('teamUpdate', Object.assign({ id: id }, patch));
+  alert(r.ok ? '✅ ' + r.message : r.message);
+  loadTeam();
+}
+function copyInvite() {
+  const url = inviteUrl(teamData.code);
+  const done = () => alert('已複製邀請連結');
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => prompt('請長按複製', url));
+  else prompt('請長按複製', url);
+}
+
 /* ===== 管理後台（僅御宇管理員） ===== */
 let adminAgents = [];
 async function loadAdmin() {
@@ -510,13 +614,15 @@ async function loadAdmin() {
       '<div><b>' + sum('pending') + '</b>待確認</div><div><b>' + sum('halfWon') + '</b>本半年成交</div></div>' +
       '<div class="row" style="margin-top:10px"><div><button class="btn sm" onclick="loadAdminCases(\'\', \'待確認\')">全部待確認</button></div>' +
       '<div><button class="btn sm" onclick="loadAdminCases(\'\', \'\', 1)">成交進度追蹤</button></div></div>' +
-      '<button class="btn sm" style="margin-top:8px" onclick="loadMonthly()">月結差價報表</button></div>';
+      '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadMonthly()">月結差價報表</button></div>' +
+      '<div><button class="btn sm" onclick="loadTree()">經銷架構</button></div></div></div>';
     if (waiting.length) {
       h += '<div class="card"><h2>待審核經銷商（' + waiting.length + '）</h2>' + waiting.map(a => {
         const i = adminAgents.indexOf(a);
         return '<div class="pending">' +
           '<b>' + esc(a.company) + '</b>｜' + esc(a.name) + (a.phone ? '｜' + esc(a.phone) : '') +
-          '<div class="meta">統編 ' + (esc(a.taxId) || '—') + '｜區域 ' + esc(a.region) + '｜申請 ' + esc(a.applied) + '｜登記 ' + esc(a.joined) + '</div>' +
+          '<div class="meta">統編 ' + (esc(a.taxId) || '—') + '｜區域 ' + esc(a.region) + '｜申請 ' + esc(a.applied) + '｜登記 ' + esc(a.joined) +
+            (a.upline ? '<br>推薦人：' + esc(a.uplineName) + '（可由推薦人於「我的團隊」審核）' : '') + '</div>' +
           '<div class="row"><div><select id="lv' + i + '">' + ['A級', 'B級', '個人合作'].map(x => '<option' + (x === a.applied ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
           '<div><button class="btn sm" onclick="approveAgent(' + i + ')">核准</button></div>' +
           '<div><button class="btn sm gray" onclick="setAgent(' + i + ', {status:\'停用\'})">不核准</button></div></div>' +
@@ -532,15 +638,38 @@ async function loadAdmin() {
           '<span class="badge">' + (esc(a.level) || '未設級別') + (a.status === '停用' ? '・停用' : '') + '</span></div>' +
         '<div class="stats"><div><b>' + a.total + '</b>報備</div><div><b>' + a.pending + '</b>待確認</div>' +
           '<div><b>' + a.won + '</b>成交</div><div><b>' + a.halfWon + '</b>本半年</div></div>' +
-        '<div class="meta">' + (a.region ? '區域 ' + esc(a.region) + '｜' : '') + (a.last ? '最後報備 ' + esc(a.last) : '尚未報備') +
+        '<div class="meta">' + esc(a.code || '') + '｜' + (a.upline ? '上線 ' + esc(a.uplineName) : a.level === 'A級' ? '直屬御宇' : '直屬御宇（無上線）') + '<br>' +
+          (a.region ? '區域 ' + esc(a.region) + '｜' : '') + (a.last ? '最後報備 ' + esc(a.last) : '尚未報備') +
           (a.dup ? '｜重複 ' + a.dup + ' 次' : '') + (a.alerts ? '｜<span style="color:var(--red)">⚠ ' + a.alerts + ' 件逾期</span>' : '') + '</div>' +
         '<div class="row" style="margin-top:8px" onclick="event.stopPropagation()">' +
           '<div><select onchange="setAgent(' + i + ', {level:this.value})">' + ['A級', 'B級', '個人合作'].map(x => '<option' + (x === a.level ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
           '<div><button class="btn sm gray" onclick="setAgent(' + i + ', {status:\'' + (a.status === '停用' ? '已核准' : '停用') + '\'})">' + (a.status === '停用' ? '恢復' : '停用') + '</button></div></div>' +
+        (a.level !== 'A級' ? '<div onclick="event.stopPropagation()" style="margin-top:6px"><select onchange="setAgent(' + i + ', {upline:this.value})">' +
+          '<option value="">上線：直屬御宇</option>' + leaders(a.id).map(x => '<option value="' + esc(x.id) + '"' + (x.id === a.upline ? ' selected' : '') + '>上線：' + esc(x.company || x.name) + '</option>').join('') +
+          '</select></div>' : '') +
       '</div>';
     }).join('');
     box.innerHTML = h;
   } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
+}
+const leaders = except => adminAgents.filter(x => x.level === 'A級' && x.status === '已核准' && x.id !== except);
+function loadTree() {
+  const box = $('#admin');
+  window.scrollTo(0, 0);
+  const a = adminAgents;
+  const tops = a.filter(x => x.level === 'A級');
+  const lab = x => esc(x.company || x.name) + ' <small>' + esc(x.name) + '｜' + (esc(x.level) || '未設級別') + '｜' + esc(x.status) + '｜報備 ' + x.total + '／成交 ' + x.won + '</small>';
+  let h = '<button class="back" onclick="loadAdmin()">‹ 返回經銷商列表</button>' +
+    '<div class="card"><h2>經銷架構</h2><div class="hint">A 級經銷商以邀請連結招募旗下 B 級／個人合作並自行核准；每次異動御宇都會收到 Email。要調整某位夥伴的上線，請在經銷商列表的卡片上選擇「上線」。</div></div>';
+  h += tops.map(t => {
+    const kids = a.filter(x => x.upline === t.id);
+    return '<div class="card"><div class="top"><b>' + esc(t.company || t.name) + ' <small>' + esc(t.name) + '</small></b><span class="badge">A級・' + esc(t.code || '') + '</span></div>' +
+      '<div class="meta">區域 ' + (esc(t.region) || '—') + '｜下線 ' + kids.length + ' 位｜' + esc(t.status) + '</div>' +
+      (kids.length ? '<div class="tree">' + kids.map(k => '<div>' + lab(k) + '</div>').join('') + '</div>' : '') + '</div>';
+  }).join('');
+  const direct = a.filter(x => x.level !== 'A級' && !x.upline);
+  if (direct.length) h += '<div class="card"><h2>直屬御宇（無上線）</h2><div class="tree">' + direct.map(k => '<div>' + lab(k) + '</div>').join('') + '</div></div>';
+  box.innerHTML = h;
 }
 async function setAgent(i, patch) {
   const a = adminAgents[i];
@@ -580,6 +709,7 @@ function caseCard(c) {
     '<div class="top"><b>' + esc(c.org) + '</b><span class="badge">' + esc(c.status) + '</span></div>' +
     '<div class="meta">' + esc(c.id) + '｜統編 ' + esc(c.taxId) + '｜' + esc(c.city) + '<br>' +
       '經銷商：' + esc(c.company) + '（' + (esc(c.level) || '—') + '）／' + esc(c.agent) + '｜報備 ' + esc(c.time) + '<br>' +
+      (c.uplineId ? '上線：' + esc(c.uplineName) + (c.ov !== '' ? '｜團隊差價 ' + esc(c.ov) + ' 萬' : '') + '<br>' : '') +
       '階段：' + (esc(c.stage) || '—') + '｜保護期至：' + (esc(c.protectUntil) || '—') + '</div>' +
     progressBar(c.stage) +
     (c.alerts && c.alerts.length ? '<div class="alerts">' + c.alerts.map(esc).join('<br>') + '</div>' : '') +
@@ -590,14 +720,14 @@ function caseCard(c) {
       row('報備備註', c.note) + row('報備人手機', c.agentPhone) +
     '</details>' +
     (c.status === '重複(未受理)' ? '<div class="meta">' + esc(c.reply) + '</div>' :
-    '<div class="edit" data-id="' + esc(c.id) + '" data-level="' + esc(c.level) + '">' +
+    '<div class="edit" data-id="' + esc(c.id) + '" data-level="' + esc(c.level) + '" data-up="' + (c.uplineId ? 1 : '') + '">' +
       '<label class="dl">階段<select class="e-stage">' + opt(STAGES.concat(['未成交']), c.stage) + '</select></label>' +
       '<label class="dl">狀態<select class="e-status">' + opt(['待確認', '有效', '成交', '未成交', '已釋出', '無效'], c.status) + '</select></label>' +
       '<label class="dl">機型<select class="e-model" onchange="feePreview(this)">' + opt(ME.models, c.model, '未選') + '</select></label>' +
       '<label class="dl">成交價（萬）<input class="e-price" inputmode="decimal" value="' + esc(c.price) + '" placeholder="預設建議售價"></label>' +
       '<div class="feeprev">' + (c.model ? '服務費 ' + esc(feeOf(c.model, c.level)) + ' 萬（' + esc(c.level) + '）' : '選擇機型後顯示服務費') + '</div>' +
       dt('signDate', '簽約日') + dt('pay1', '一期款 50%') + dt('deliverDate', '交機日') + dt('pay2', '二期款 40%') +
-      dt('acceptDate', '驗收日') + dt('pay3', '三期款 10%') + dt('feePaid', '服務費發放日') +
+      dt('acceptDate', '驗收日') + dt('pay3', '三期款 10%') + dt('feePaid', '服務費發放日') + (c.uplineId ? dt('ovPaid', '團隊差價發放日') : '') +
       '<textarea class="e-reply" placeholder="回覆經銷商（經銷商在「我的案件」看得到）">' + esc(c.reply) + '</textarea>' +
       '<button class="btn" onclick="saveCase(this)">儲存</button>' +
     '</div>') +
@@ -606,7 +736,8 @@ function caseCard(c) {
 function feePreview(sel) {
   const w = sel.closest('.edit');
   const m = sel.value, lv = w.dataset.level;
-  w.querySelector('.feeprev').textContent = m ? '服務費 ' + feeOf(m, lv) + ' 萬（' + lv + '）｜建議售價 ' + ME.prices[m].retail + ' 萬' : '選擇機型後顯示服務費';
+  const ov = m && w.dataset.up && LV[lv] !== 'A' ? Math.round((ME.prices[m][LV[lv]] - ME.prices[m].A) * 10) / 10 : 0;
+  w.querySelector('.feeprev').textContent = m ? '服務費 ' + feeOf(m, lv) + ' 萬（' + lv + '）' + (ov > 0 ? '｜上線團隊差價 ' + ov + ' 萬' : '') + '｜建議售價 ' + ME.prices[m].retail + ' 萬' : '選擇機型後顯示服務費';
   const p = w.querySelector('.e-price'); if (m && !p.value) p.placeholder = '預設 ' + ME.prices[m].retail;
 }
 async function saveCase(btn) {
@@ -646,9 +777,9 @@ async function loadMonthly(month) {
       '<div class="card"><h2>經銷商服務費月結報表</h2>' +
       '<label class="dl">結算月份<input type="month" id="mPick" value="' + esc(r.month) + '" onchange="loadMonthly(this.value)"></label>' +
       '<div class="stats" style="margin-top:10px"><div><b>' + r.count + '</b>結算案件</div><div><b>' + r.agents.length + '</b>經銷商</div>' +
-      '<div><b>' + r.total + '</b>服務費(萬)</div><div><b>' + r.unpaid + '</b>待發放(萬)</div></div>' +
-      '<div class="hint">結算條件：驗收完成且全額付清（三期款入帳）。月份以兩者較晚日期計算。金額為未稅。</div>' +
-      (r.unpaidOther ? '<div class="alerts">其他月份尚有 ' + r.unpaidOther + ' 件、' + r.unpaidOtherFee + ' 萬服務費未發放</div>' : '') +
+      '<div><b>' + r.total + '</b>應發合計(萬)</div><div><b>' + r.unpaid + '</b>待發放(萬)</div></div>' +
+      '<div class="hint">服務費 ' + r.feeTotal + ' 萬＋A 級團隊差價 ' + r.teamTotal + ' 萬。結算條件：驗收完成且全額付清（三期款入帳），月份以兩者較晚日期計算。金額為未稅。</div>' +
+      (r.unpaidOther ? '<div class="alerts">其他月份尚有 ' + r.unpaidOther + ' 筆、' + r.unpaidOtherFee + ' 萬未發放</div>' : '') +
       '<div class="row" style="margin-top:10px"><div><button class="btn sm" onclick="exportMonthly()">匯出至試算表</button></div>' +
       (r.unpaid ? '<div><button class="btn sm gray" onclick="markPaid(\'\')">全部標記已發放</button></div>' : '') + '</div></div>';
     if (!r.agents.length) h += '<div class="center">本月沒有可結算的案件</div>';
@@ -656,15 +787,18 @@ async function loadMonthly(month) {
       '<div class="card">' +
         '<div class="top"><b>' + esc(g.company) + ' <small style="color:var(--mu);font-weight:400">' + esc(g.name) + '</small></b>' +
           '<span class="badge">' + (esc(g.level) || '—') + '</span></div>' +
-        '<div class="meta">' + (g.taxId ? '統編 ' + esc(g.taxId) + '｜' : '') + (g.phone ? esc(g.phone) : '') + '</div>' +
-        '<table class="mt"><tr><th>客戶／機型</th><th>驗收｜付清</th><th>服務費</th></tr>' +
+        '<div class="meta">' + [g.code, g.uplineName ? '上線 ' + g.uplineName : '', g.taxId ? '統編 ' + g.taxId : '', g.phone].filter(Boolean).map(esc).join('｜') + '</div>' +
+        '<table class="mt"><tr><th>客戶／機型</th><th>驗收｜付清</th><th>金額</th></tr>' +
           g.cases.map(c => '<tr><td>' + esc(c.org) + '<br><small>' + esc(c.id) + '｜' + esc(c.model) + '</small></td>' +
             '<td><small>' + esc(c.acceptDate) + '<br>' + esc(c.pay3) + '</small></td>' +
             '<td class="num">' + esc(c.fee) + '<br><small>' + (c.feePaid ? '已發 ' + esc(c.feePaid) : '待發放') + '</small></td></tr>').join('') +
-          '<tr class="sum"><td colspan="2">小計 ' + g.cases.length + ' 件</td><td class="num">' + g.total + ' 萬</td></tr>' +
+          g.team.map(c => '<tr class="team"><td>' + esc(c.org) + '<br><small>團隊差價｜' + esc(c.member) + '（' + esc(c.level) + '）｜' + esc(c.model) + '</small></td>' +
+            '<td><small>' + esc(c.acceptDate) + '<br>' + esc(c.pay3) + '</small></td>' +
+            '<td class="num">' + esc(c.fee) + '<br><small>' + (c.feePaid ? '已發 ' + esc(c.feePaid) : '待發放') + '</small></td></tr>').join('') +
+          '<tr class="sum"><td colspan="2">小計：服務費 ' + g.fee + (g.teamFee ? '＋團隊差價 ' + g.teamFee : '') + '</td><td class="num">' + g.total + ' 萬</td></tr>' +
         '</table>' +
         (g.unpaid ? '<button class="btn sm" style="margin-top:8px" onclick="markPaid(\'' + esc(g.id) + '\')">標記已發放（' + g.unpaid + ' 萬）</button>'
-                  : '<div class="meta" style="color:#3b7d2e">✓ 本月服務費已全數發放</div>') +
+                  : '<div class="meta" style="color:#3b7d2e">✓ 本月已全數發放</div>') +
       '</div>').join('');
     box.innerHTML = h;
   } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
@@ -676,7 +810,7 @@ async function exportMonthly() {
 async function markPaid(agentId) {
   const g = agentId ? monthData.agents.find(a => a.id === agentId) : null;
   const amt = g ? g.unpaid : monthData.unpaid;
-  if (!confirm('確定將「' + (g ? g.company : '全部經銷商') + '」' + monthData.month + ' 的服務費 ' + amt + ' 萬標記為已發放（今天）？')) return;
+  if (!confirm('確定將「' + (g ? g.company : '全部經銷商') + '」' + monthData.month + ' 的服務費與團隊差價共 ' + amt + ' 萬標記為已發放（今天）？')) return;
   const r = await api('adminMarkPaid', { month: monthData.month, agentId: agentId || '' });
   alert(r.ok ? '✅ ' + r.message : r.message);
   loadMonthly(monthData.month);
@@ -687,7 +821,8 @@ async function markPaid(agentId) {
   try {
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn() || tokenExpired()) { relogin(); return; }
-    const r = await api('init');
+    const q = new URLSearchParams(location.search);
+    const r = await api('init', { ref: q.get('ref') || '' });
     if (!r.ok) { $('#loading').textContent = r.message; return; }
     try { sessionStorage.removeItem('relogin'); } catch (e) {}
     ME = r;
@@ -695,10 +830,11 @@ async function markPaid(agentId) {
     $('#hello').textContent = '您好，' + (a ? (a.name || r.lineName) + (a.company ? '｜' + a.company : '') : r.lineName);
     $('#tabs').classList.remove('hidden');
     if (r.isAdmin) $('#adminTab').classList.remove('hidden');
+    if (r.isLeader) $('#teamTab').classList.remove('hidden');
     fillAgent();
-    const tab = new URLSearchParams(location.search).get('tab');
+    const tab = q.get('tab');
     if (!canReport() && tab !== 'svc') { showReg(); return; }
-    openTab(['list', 'svc'].includes(tab) || (tab === 'admin' && r.isAdmin) ? tab : 'form');
+    openTab(['list', 'svc'].includes(tab) || (tab === 'admin' && r.isAdmin) || (tab === 'team' && r.isLeader) ? tab : 'form');
   } catch (e) {
     if (e.message !== 'relogin') $('#loading').textContent = '初始化失敗：' + e.message + '（請關閉後重新開啟）';
   }
