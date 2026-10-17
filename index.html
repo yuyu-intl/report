@@ -380,11 +380,10 @@ const feeOf = (model, level) => { const p = ME.prices[model], k = LV[level]; ret
 /* ===== 經銷商登記 ===== */
 function refMode() {
   const on = !!reg.ref.value.trim() || reg.ref.disabled;
-  $('#lvA').style.display = on ? 'none' : '';
+  $('#lvA').style.display = '';
   if (!ME.agent) $('#regNote').innerHTML = on ? '歡迎加入御宇國際廚餘機通路。請完成登記，推薦人審核並設定級別後，即可開始報備。'
     : '歡迎加入御宇國際廚餘機通路。請先完成經銷商登記，御宇審核並設定級別後，即可開始報備。';
-  if (on && reg.querySelector('input[name=level][value="A級"]').checked) reg.querySelector('input[name=level][value="A級"]').checked = false;
-  $('#lvHint').textContent = on ? '透過推薦加入者，級別由推薦的 A 級經銷商審核設定。' : '最終級別由御宇核定。';
+  $('#lvHint').textContent = on ? '透過推薦加入者，級別由推薦的 A 級經銷商審核設定（A 級／B 級／個人合作皆可申請）。' : '最終級別由御宇核定。';
 }
 reg.ref.addEventListener('input', refMode);
 function showReg() {
@@ -547,7 +546,7 @@ async function loadTeam() {
     const s = r.summary;
     let h = '<div class="card" id="perfCard">' + perfHtml(r.perf) + '</div>' +
       '<div class="card"><h2>邀請夥伴加入</h2>' +
-      '<div class="hint">把連結傳給想加入的夥伴，對方登記後會出現在下方「待審核」，由您核准並設定為 B 級或個人合作。御宇會同步收到通知。</div>' +
+      '<div class="hint">把連結傳給想加入的夥伴，對方登記後會出現在下方「待審核」，由您核准並設定為 A 級、B 級或個人合作。您旗下 A 級再招募的夥伴，會列入您的「二層組織」。御宇會同步收到通知。</div>' +
       '<div class="invite">我的邀請碼 <b>' + esc(r.code) + '</b><br>' + esc(url) + '</div>' +
       '<div class="row"><div><a class="btn sm" href="https://line.me/R/share?text=' + encodeURIComponent(shareText) + '">用 LINE 分享</a></div>' +
       '<div><button class="btn sm gray" onclick="copyInvite()">複製連結</button></div></div></div>';
@@ -563,20 +562,27 @@ async function loadTeam() {
         '<div><button class="btn sm" onclick="teamSet(\'' + esc(m.id) + '\', {level: $(\'#tl_' + esc(m.id) + '\').value, status: \'已核准\'})">核准</button></div>' +
         '<div><button class="btn sm gray" onclick="teamSet(\'' + esc(m.id) + '\', {status: \'停用\'})">不核准</button></div></div></div>').join('') + '</div>';
     }
-    const list = r.members.filter(m => m.status !== '待審核');
-    h += '<div class="card"><h2>我的夥伴（' + list.length + '）</h2>' + (list.length ? list.map(m =>
+    const list = r.members.filter(m => m.status !== '待審核' && m.tier === 1);
+    const second = r.members.filter(m => m.tier === 2);
+    h += '<div class="card"><h2>直屬夥伴（' + list.length + '）</h2>' + (list.length ? list.map(m =>
       '<div class="pending"><div class="top"><b>' + esc(m.company || m.name) + ' <small>' + esc(m.name) + '</small></b>' +
         '<span class="badge">' + (esc(m.level) || '—') + (m.status === '停用' ? '・停用' : '') + '</span></div>' +
       '<div class="meta">' + esc(m.code) + '｜區域 ' + (esc(m.region) || '—') + '｜報備 ' + m.total + '｜成交 ' + m.won + '｜團隊差價 ' + m.ov + ' 萬</div>' +
       '<div class="row"><div><select onchange="teamSet(\'' + esc(m.id) + '\', {level: this.value})">' + r.downLevels.map(x => '<option' + (x === m.level ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
       '<div><button class="btn sm gray" onclick="teamSet(\'' + esc(m.id) + '\', {status: \'' + (m.status === '停用' ? '已核准' : '停用') + '\'})">' + (m.status === '停用' ? '恢復' : '停用') + '</button></div></div></div>').join('')
       : '<div class="meta">尚無夥伴，分享邀請連結邀請夥伴加入。</div>') + '</div>';
+    if (second.length) {
+      h += '<div class="card"><h2>二層組織（' + second.length + '）</h2><div class="hint">您旗下 A 級招募的夥伴，由該 A 級審核管理；業績列入您的組織。</div>' + second.map(m =>
+        '<div class="pending"><div class="top"><b>' + esc(m.company || m.name) + ' <small>' + esc(m.name) + '</small></b>' +
+          '<span class="badge">' + (esc(m.level) || '—') + (m.status !== '已核准' ? '・' + esc(m.status) : '') + '</span></div>' +
+        '<div class="meta">上線 ' + esc(m.via) + '｜' + esc(m.code) + '｜區域 ' + (esc(m.region) || '—') + '｜報備 ' + m.total + '｜成交 ' + m.won + '</div></div>').join('') + '</div>';
+    }
     if (r.cases.length) {
-      h += '<div class="card"><h2>團隊案件（' + r.cases.length + '）</h2>' + r.cases.map(c =>
+      h += '<div class="card"><h2>組織案件（' + r.cases.length + '）</h2>' + r.cases.map(c =>
         '<div class="pending"><div class="top"><b>' + esc(c.org) + '</b><span class="badge">' + esc(c.status) + '</span></div>' +
-        '<div class="meta">' + esc(c.member) + '（' + (esc(c.memberLevel) || '—') + '）｜' + esc(c.city) + '｜報備 ' + esc(c.time) + '<br>' +
+        '<div class="meta">' + esc(c.member) + '（' + (esc(c.memberLevel) || '—') + '）' + (c.tier === 2 ? '・' + esc(c.via) + ' 的團隊' : '') + '｜' + esc(c.city) + '｜報備 ' + esc(c.time) + '<br>' +
         '階段：' + (esc(c.stage) || '—') + (c.model ? '｜機型 ' + esc(c.model) : '') +
-        (c.ov !== '' ? '｜團隊差價 <b>' + esc(c.ov) + ' 萬</b>' + (c.ovPaid ? '（已發 ' + esc(c.ovPaid) + '）' : c.settle ? '（' + esc(c.settle) + ' 結算）' : '') : '') +
+        (c.ov !== '' && c.ov != null ? '｜團隊差價 <b>' + esc(c.ov) + ' 萬</b>' + (c.ovPaid ? '（已發 ' + esc(c.ovPaid) + '）' : c.settle ? '（' + esc(c.settle) + ' 結算）' : '') : '') +
         '｜保護期至 ' + (esc(c.protectUntil) || '—') + '</div>' + progressBar(c.stage) + custDetail(c) +
         (c.reply ? '<div class="meta">御宇回覆：' + esc(c.reply) + '</div>' : '') + '</div>').join('') + '</div>';
     }
@@ -587,28 +593,30 @@ function perfHtml(p) {
   const n = x => (Math.round(x * 10) / 10).toLocaleString();
   const c = p.current, t = p.total;
   const row = (k, a, b, cls) => '<span class="k' + (cls ? ' ' + cls : '') + '">' + k + '</span><b' + (cls ? ' class="' + cls + '"' : '') + '>' + a + '</b><b' + (cls ? ' class="' + cls + '"' : '') + '>' + b + '</b>';
-  const z = c || { ownUnits: 0, ownSales: 0, teamUnits: 0, teamSales: 0, fee: 0, ov: 0 };
+  const z = c || { ownUnits: 0, ownSales: 0, teamUnits: 0, teamSales: 0, orgUnits: 0, orgSales: 0, fee: 0, ov: 0 };
+  const sales = m => m.ownSales + m.teamSales + (m.orgSales || 0), units = m => m.ownUnits + m.teamUnits + (m.orgUnits || 0);
   let h = '<h2>業績總覽</h2>' +
     '<div class="yr"><button onclick="loadPerf(' + (p.year - 1) + ')">‹</button><b>' + p.year + ' 年</b><button onclick="loadPerf(' + (p.year + 1) + ')">›</button></div>' +
     '<div class="perf"><span></span><span class="h">' + (c ? '本月' : '—') + '</span><span class="h">全年</span>' +
       row('我的成交台數', z.ownUnits, t.ownUnits) +
       row('我的營業額（萬）', n(z.ownSales), n(t.ownSales)) +
-      row('團隊成交台數', z.teamUnits, t.teamUnits) +
-      row('團隊營業額（萬）', n(z.teamSales), n(t.teamSales)) +
-      row('合計營業額（萬）', n(z.ownSales + z.teamSales), n(t.ownSales + t.teamSales), 'tot') +
+      row('直屬團隊台數', z.teamUnits, t.teamUnits) +
+      row('直屬團隊營業額（萬）', n(z.teamSales), n(t.teamSales)) +
+      (t.orgUnits ? row('二層組織台數', z.orgUnits, t.orgUnits) + row('二層組織營業額（萬）', n(z.orgSales), n(t.orgSales)) : '') +
+      row('組織總營業額（萬）', n(sales(z)), n(sales(t)), 'tot') +
       row('我的服務費（萬）', n(z.fee), n(t.fee)) +
       row('團隊差價（萬）', n(z.ov), n(t.ov)) +
       row('獎金合計（萬）', n(z.fee + z.ov), n(t.fee + t.ov), 'tot') +
     '</div>' +
     ((p.pending.fee || p.pending.ov) ? '<div class="hint">另有已成交、尚未結算的獎金：服務費 ' + n(p.pending.fee) + ' 萬、團隊差價 ' + n(p.pending.ov) + ' 萬。</div>' : '');
-  const max = Math.max.apply(null, p.months.map(m => m.ownSales + m.teamSales).concat([1]));
-  const active = p.months.filter(m => m.ownUnits || m.teamUnits || m.fee || m.ov);
+  const max = Math.max.apply(null, p.months.map(sales).concat([1]));
+  const active = p.months.filter(m => units(m) || m.fee || m.ov);
   h += active.length ? '<table class="mt" style="margin-top:10px"><tr><th>月份</th><th>台數｜營業額</th><th>獎金</th></tr>' +
-    active.map(m => '<tr><td>' + esc(m.month.slice(5)) + ' 月</td><td>' + (m.ownUnits + m.teamUnits) + ' 台｜' + n(m.ownSales + m.teamSales) + ' 萬' +
-      '<div class="bar" style="width:' + Math.round((m.ownSales + m.teamSales) / max * 100) + '%"></div></td>' +
+    active.map(m => '<tr><td>' + esc(m.month.slice(5)) + ' 月</td><td>' + units(m) + ' 台｜' + n(sales(m)) + ' 萬' +
+      '<div class="bar" style="width:' + Math.round(sales(m) / max * 100) + '%"></div></td>' +
       '<td class="num">' + n(m.fee + m.ov) + ' 萬</td></tr>').join('') + '</table>'
     : '<div class="meta" style="margin-top:8px">' + p.year + ' 年尚無成交紀錄</div>';
-  h += '<div class="hint">營業額依簽約日（成交價、未稅）計算；獎金依驗收且全額付清的月份計算。</div>';
+  h += '<div class="hint">營業額依簽約日（成交價、未稅）計算；獎金依驗收且全額付清的月份計算。二層組織只計業績；A 級帶 A 級的獎金辦法待御宇公布。</div>';
   return h;
 }
 async function loadPerf(year) {
@@ -690,7 +698,7 @@ async function loadAdmin() {
         '<div class="row" style="margin-top:8px" onclick="event.stopPropagation()">' +
           '<div><select onchange="setAgent(' + i + ', {level:this.value})">' + ['A級', 'B級', '個人合作'].map(x => '<option' + (x === a.level ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
           '<div><button class="btn sm gray" onclick="setAgent(' + i + ', {status:\'' + (a.status === '停用' ? '已核准' : '停用') + '\'})">' + (a.status === '停用' ? '恢復' : '停用') + '</button></div></div>' +
-        (a.level !== 'A級' ? '<div onclick="event.stopPropagation()" style="margin-top:6px"><select onchange="setAgent(' + i + ', {upline:this.value})">' +
+        (!a.builtinAdmin ? '<div onclick="event.stopPropagation()" style="margin-top:6px"><select onchange="setAgent(' + i + ', {upline:this.value})">' +
           '<option value="">上線：直屬御宇</option>' + leaders(a.id).map(x => '<option value="' + esc(x.id) + '"' + (x.id === a.upline ? ' selected' : '') + '>上線：' + esc(x.company || x.name) + '</option>').join('') +
           '</select></div>' : '') +
         (a.builtinAdmin ? '' : '<div onclick="event.stopPropagation()" style="margin-top:6px"><button class="btn sm gray" onclick="toggleAdmin(' + i + ')">' + (a.isAdmin ? '取消管理員權限' : '設為御宇管理員') + '</button></div>') +
@@ -704,15 +712,19 @@ function loadTree() {
   const box = $('#admin');
   window.scrollTo(0, 0);
   const a = adminAgents;
-  const tops = a.filter(x => x.level === 'A級');
+  const ids = {}; a.forEach(x => ids[x.id] = 1);
+  const tops = a.filter(x => x.level === 'A級' && !(x.upline && ids[x.upline]));
   const lab = x => esc(x.company || x.name) + ' <small>' + esc(x.name) + '｜' + (esc(x.level) || '未設級別') + '｜' + esc(x.status) + '｜報備 ' + x.total + '／成交 ' + x.won + '</small>';
   let h = '<button class="back" onclick="loadAdmin()">‹ 返回經銷商列表</button>' +
-    '<div class="card"><h2>經銷架構</h2><div class="hint">A 級經銷商以邀請連結招募旗下 B 級／個人合作並自行核准；每次異動御宇都會收到 Email。要調整某位夥伴的上線，請在經銷商列表的卡片上選擇「上線」。</div></div>';
+    '<div class="card"><h2>經銷架構</h2><div class="hint">A 級經銷商以邀請連結招募旗下 A 級／B 級／個人合作並自行核准（組織計兩層）；每次異動御宇都會收到 Email。要調整某位夥伴的上線，請在經銷商列表的卡片上選擇「上線」。</div></div>';
   h += tops.map(t => {
     const kids = a.filter(x => x.upline === t.id);
     return '<div class="card"><div class="top"><b>' + esc(t.company || t.name) + ' <small>' + esc(t.name) + '</small></b><span class="badge">A級・' + esc(t.code || '') + '</span></div>' +
       '<div class="meta">區域 ' + (esc(t.region) || '—') + '｜下線 ' + kids.length + ' 位｜' + esc(t.status) + '</div>' +
-      (kids.length ? '<div class="tree">' + kids.map(k => '<div>' + lab(k) + '</div>').join('') + '</div>' : '') + '</div>';
+      (kids.length ? '<div class="tree">' + kids.map(k => {
+        const gk = a.filter(x => x.upline === k.id);
+        return '<div>' + lab(k) + (gk.length ? '<div class="tree">' + gk.map(g => '<div>' + lab(g) + '</div>').join('') + '</div>' : '') + '</div>';
+      }).join('') + '</div>' : '') + '</div>';
   }).join('');
   const direct = a.filter(x => x.level !== 'A級' && !x.upline);
   if (direct.length) h += '<div class="card"><h2>直屬御宇（無上線）</h2><div class="tree">' + direct.map(k => '<div>' + lab(k) + '</div>').join('') + '</div></div>';
