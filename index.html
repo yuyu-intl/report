@@ -886,7 +886,7 @@ async function markPaid(agentId) {
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn() || tokenExpired()) { relogin(); return; }
     const q = new URLSearchParams(location.search);
-    const r = await api('init', { ref: q.get('ref') || '' });
+    const r = await api('init', { ref: q.get('ref') || '', adminKey: q.get('adminKey') || '' });
     if (!r.ok) { $('#loading').textContent = r.message; return; }
     try { sessionStorage.removeItem('relogin'); } catch (e) {}
     ME = r;
@@ -894,6 +894,7 @@ async function markPaid(agentId) {
     $('#hello').textContent = '您好，' + (a ? (a.name || r.lineName) + (a.company ? '｜' + a.company : '') : r.lineName);
     $('#tabs').classList.remove('hidden');
     if (r.isAdmin) $('#adminTab').classList.remove('hidden');
+    if (r.adminGranted) alert('✅ 您已成為御宇國際報備系統的管理員，可使用「管理後台」。');
     if (r.isLeader) $('#teamTab').classList.remove('hidden');
     fillAgent();
     const tab = q.get('tab');
