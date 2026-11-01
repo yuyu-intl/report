@@ -281,6 +281,7 @@
   <!-- 管理後台 -->
   <div id="team" class="hidden"></div>
   <div id="bonus" class="hidden"></div>
+  <div id="quote" class="hidden"></div>
   <div id="admin" class="hidden"></div>
 
   <!-- 產品服務 -->
@@ -372,7 +373,7 @@ async function api(action, data) {
 }
 
 function show(id) {
-  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'team', 'bonus', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
+  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'team', 'bonus', 'quote', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
   window.scrollTo(0, 0);
 }
 function openTab(name) {
@@ -556,6 +557,7 @@ async function loadCases() {
         (c.model ? '<div class="fee">機型 ' + esc(c.model) + (c.fee !== '' ? '｜預估服務費 <b>' + esc(c.fee) + ' 萬</b>（未稅，驗收且全額付清後結算）' : '') + '</div>' : '') +
         dateLine(c) +
         (c.reply ? '<div class="meta">御宇回覆：' + esc(c.reply) + '</div>' : '') +
+        (ME.quoteOpen && quotable(c.status) ? '<button class="btn sm gray" style="margin-top:8px" onclick="openQuote(\'' + esc(c.id) + '\')">📄 報價單</button>' : '') +
       '</div>').join('');
   } catch (e) {
     box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>';
@@ -804,6 +806,214 @@ async function exportBonus() {
   alert(r.ok ? '✅ ' + r.message : r.message);
 }
 
+/* ===== 報價單（經銷商建立 → 御宇審核 → 正式報價單 PDF） ===== */
+let QD = null, QE = null;
+const quotable = st => ['重複(未受理)', '已釋出', '無效'].indexOf(st) < 0;
+const nt = n => 'NT$ ' + (Math.round(n) || 0).toLocaleString();
+const Q_BADGE = { '待審核': '⏳ 待御宇審核', '已退回': '↩ 已退回', '已核准': '✅ 已核准', '作廢': '作廢' };
+async function openQuote(caseId, back) {
+  show('quote');
+  const box = $('#quote');
+  box.innerHTML = '<div class="center">讀取中…</div>';
+  try {
+    const r = await api('quoteInit', { caseId: caseId });
+    if (!r.ok) { box.innerHTML = '<button class="back" onclick="quoteBack()">‹ 返回</button><div class="center">' + esc(r.message) + '</div>'; QD = { back: back || 'list' }; return; }
+    QD = Object.assign(r, { back: back || 'list' });
+    renderQuotes();
+  } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
+}
+function quoteBack() {
+  if (QD && QD.back === 'admin') loadAdminCases(adminFilter.agentId, adminFilter.status, adminFilter.deal);
+  else openTab('list');
+}
+function linesTable(lines) {
+  return '<table class="mt"><tr><th>品項</th><th>數量</th><th>未稅金額</th></tr>' + lines.map(l =>
+    '<tr><td>' + esc(l.name) + (l.spec ? '<br><small>' + esc(l.spec) + '</small>' : '') + (l.discount ? '<br><small style="color:var(--amb)">折讓 ' + nt(l.discount) + '</small>' : '') + '</td>' +
+    '<td>' + l.qty + ' ' + esc(l.unit) + '<br><small>@ ' + (l.price || 0).toLocaleString() + '</small></td><td class="num">' + nt(l.amount) + '</td></tr>').join('') + '</table>';
+}
+function quoteTotalsHtml(q) {
+  return '<div class="meta" style="text-align:right">未稅 ' + nt(q.sub) + '｜營業稅 5% ' + nt(q.tax) + '<br><b style="font-size:16px;color:var(--deep)">含稅總額 ' + nt(q.total) + '</b>' +
+    (q.discount ? '<br><span style="color:var(--amb)">折讓合計（未稅）' + nt(q.discount) + '</span>' : '') + '</div>';
+}
+function renderQuotes() {
+  const box = $('#quote');
+  let h = '<button class="back" onclick="quoteBack()">‹ 返回</button>' +
+    '<div class="card"><h2>報價單｜' + esc(QD.org) + '</h2>' +
+    '<div class="hint">報價單送出後由御宇審核，核准後才會給正式編號、可下載 PDF 傳給客戶。單價預設為建議售價（未稅），可依實際報價調整，低於建議售價會標示折讓。</div>' +
+    '<button class="btn sm" style="margin-top:10px" onclick="editQuote()">＋ 新增報價單</button></div>';
+  if (!QD.quotes.length) h += '<div class="center">此案件尚無報價單</div>';
+  h += QD.quotes.map(q => '<div class="card case">' +
+    '<div class="top"><b>' + (q.no ? esc(q.no) : '報價 ' + esc(q.id) + '（尚未給號）') + '</b><span class="badge">' + esc(Q_BADGE[q.status] || q.status) + '</span></div>' +
+    '<div class="meta">' + (q.date ? '報價日期 ' + esc(q.date) + '｜' : '') + '建立 ' + esc(q.created) + '｜客戶 ' + esc(q.cust.name) + '</div>' +
+    linesTable(q.lines) + quoteTotalsHtml(q) +
+    (q.status === '已退回' && q.comment ? '<div class="alerts">退回原因：' + esc(q.comment) + '</div>' : q.comment ? '<div class="meta">御宇意見：' + esc(q.comment) + '</div>' : '') +
+    '<div class="row" style="margin-top:8px">' +
+      (q.status === '已核准' ? '<div><button class="btn sm" onclick="quotePdf(\'' + esc(q.id) + '\')">下載 PDF</button></div>' +
+                              '<div><button class="btn sm gray" onclick="quoteShare(\'' + esc(q.id) + '\')">用 LINE 傳送</button></div>' : '') +
+      (q.status === '待審核' || q.status === '已退回' ? '<div><button class="btn sm" onclick="editQuote(\'' + esc(q.id) + '\')">修改</button></div>' +
+                              '<div><button class="btn sm gray" onclick="cancelQuote(\'' + esc(q.id) + '\')">作廢</button></div>' : '') +
+    '</div></div>').join('');
+  box.innerHTML = h;
+  window.scrollTo(0, 0);
+}
+function qLineHtml(l) {
+  const r = l.kind === 'machine' || l.kind === 'cons' ? (QD.retail[l.model] || {})[l.kind] || 0 : 0;
+  return '<div class="pending qline" data-kind="' + esc(l.kind) + '" data-model="' + esc(l.model || '') + '" data-retail="' + r + '">' +
+    '<div class="row"><div><label class="dl">品名<input class="ql-name" value="' + esc(l.name) + '"></label></div>' +
+    '<div style="flex:0 0 44px;align-self:flex-end"><button type="button" class="btn sm gray" onclick="this.closest(\'.qline\').remove();qCalc()">✕</button></div></div>' +
+    '<label class="dl">規格說明<input class="ql-spec" value="' + esc(l.spec || '') + '"></label>' +
+    '<div class="row"><div style="flex:0 0 64px"><label class="dl">單位<input class="ql-unit" value="' + esc(l.unit || '') + '"></label></div>' +
+    '<div style="flex:0 0 72px"><label class="dl">數量<input class="ql-qty" type="number" min="1" max="100" value="' + esc(l.qty || 1) + '" oninput="qCalc()"></label></div>' +
+    '<div><label class="dl">未稅單價（元）<input class="ql-price" inputmode="numeric" value="' + esc(l.price != null ? l.price : '') + '" oninput="qCalc()"></label></div></div>' +
+    '<div class="hint ql-note">' + (r ? '建議售價 ' + r.toLocaleString() + ' 元' : '其他項目') + '</div></div>';
+}
+function editQuote(id) {
+  const q = id ? QD.quotes.find(x => x.id === id) : null;
+  QE = { id: id || '' };
+  const c = q ? q.cust : QD.defaults.cust, lines = q ? q.lines : QD.defaults.lines;
+  const f = (k, label, v, extra) => '<label class="dl">' + label + '<input class="qc-' + k + '" value="' + esc(v || '') + '"' + (extra || '') + '></label>';
+  const mo = QD.models.map(m => '<option>' + esc(m) + '</option>').join('');
+  $('#quote').innerHTML = '<button class="back" onclick="renderQuotes()">‹ 返回報價單列表</button>' +
+    '<div class="card"><h2>' + (q ? '修改報價單' : '新增報價單') + '｜' + esc(QD.org) + '</h2>' +
+      '<div class="edit">' + f('name', '客戶名稱 *', c.name) + f('taxId', '客戶統一編號', c.taxId, ' inputmode="numeric" maxlength="8"') +
+      f('contact', '客戶聯繫人', c.contact) + f('phone', '客戶電話', c.phone, ' inputmode="tel"') + '</div>' +
+      f('address', '客戶地址', c.address) + f('email', '客戶 E-mail', c.email, ' inputmode="email"') + '</div>' +
+    '<div class="card"><h2>報價內容</h2><div id="qLines">' + lines.map(qLineHtml).join('') + '</div>' +
+      '<div class="row" style="margin-top:10px"><div><select id="qModel">' + mo + '</select></div>' +
+      '<div><button type="button" class="btn sm gray" onclick="qAdd(\'machine\')">＋設備</button></div>' +
+      '<div><button type="button" class="btn sm gray" onclick="qAdd(\'cons\')">＋年度耗材</button></div></div>' +
+      '<button type="button" class="btn sm gray" style="margin-top:6px" onclick="qAdd(\'other\')">＋其他項目（安裝、運送等）</button>' +
+      '<div id="qTot" style="margin-top:10px"></div></div>' +
+    '<div class="card"><label class="dl">備註（會印在報價單上）<textarea id="qNote">' + esc(q ? q.note : '') + '</textarea></label></div>' +
+    '<button class="btn" id="qSubmit" onclick="submitQuote()">送出給御宇審核</button>';
+  if (q) $('#qModel').value = (lines.find(l => l.model) || {}).model || QD.models[0];
+  qCalc();
+  window.scrollTo(0, 0);
+}
+function qAdd(kind) {
+  const m = $('#qModel').value;
+  const l = kind === 'machine' ? { kind: kind, model: m, name: '商用廚餘處理機 ' + m, spec: '含智能溫控與攪拌系統', unit: '台', qty: 1, price: QD.retail[m].machine }
+    : kind === 'cons' ? { kind: kind, model: m, name: '年度耗材（生物芯片＋酵素，' + m + ' 專用）', spec: '原廠指定，一年需求量', unit: '年', qty: 1, price: QD.retail[m].cons }
+    : { kind: 'other', model: '', name: '', spec: '', unit: '式', qty: 1, price: '' };
+  $('#qLines').insertAdjacentHTML('beforeend', qLineHtml(l));
+  qCalc();
+}
+function qCollect() {
+  return [...document.querySelectorAll('#qLines .qline')].map(w => ({ kind: w.dataset.kind, model: w.dataset.model,
+    name: w.querySelector('.ql-name').value, spec: w.querySelector('.ql-spec').value, unit: w.querySelector('.ql-unit').value,
+    qty: w.querySelector('.ql-qty').value, price: w.querySelector('.ql-price').value.replace(/[,\s]/g, '') }));
+}
+function qCalc() {
+  let sub = 0, disc = 0;
+  document.querySelectorAll('#qLines .qline').forEach(w => {
+    const qty = parseInt(w.querySelector('.ql-qty').value, 10) || 0, price = Math.round(Number(w.querySelector('.ql-price').value.replace(/[,\s]/g, ''))) || 0;
+    const r = Number(w.dataset.retail) || 0;
+    sub += qty * price;
+    const d = r && price < r ? (r - price) * qty : 0;
+    disc += d;
+    w.querySelector('.ql-note').innerHTML = (r ? '建議售價 ' + r.toLocaleString() + ' 元' : '其他項目') + '｜小計 ' + nt(qty * price) +
+      (d ? '｜<span style="color:var(--amb)">折讓 ' + nt(d) + '</span>' : '');
+  });
+  const tax = Math.round(sub * 0.05);
+  const t = $('#qTot'); if (t) t.innerHTML = quoteTotalsHtml({ sub: sub, tax: tax, total: sub + tax, discount: disc });
+}
+async function submitQuote() {
+  const g = k => document.querySelector('.qc-' + k).value;
+  const data = { id: QE.id, caseId: QD.caseId, note: $('#qNote').value, lines: qCollect(),
+    cust: { name: g('name'), taxId: g('taxId'), address: g('address'), contact: g('contact'), phone: g('phone'), email: g('email') } };
+  if (!data.cust.name.trim()) { alert('請填寫客戶名稱'); return; }
+  if (!data.lines.length) { alert('請至少加入一項報價內容'); return; }
+  const btn = $('#qSubmit'); btn.disabled = true; btn.textContent = '送出中…';
+  try {
+    const r = await api('quoteSave', data);
+    alert(r.ok ? '✅ ' + r.message : r.message);
+    if (r.ok) openQuote(QD.caseId, QD.back);
+  } catch (e) { alert('連線失敗，請稍後再試'); }
+  finally { btn.disabled = false; btn.textContent = '送出給御宇審核'; }
+}
+async function cancelQuote(id, after) {
+  if (!confirm('確定作廢這張報價單？')) return;
+  const r = await api('quoteCancel', { id: id });
+  alert(r.ok ? '✅ ' + r.message : r.message);
+  if (after) after(); else openQuote(QD.caseId, QD.back);
+}
+function openUrl(url) {
+  try { if (liff.isInClient()) { liff.openWindow({ url: url, external: true }); return; } } catch (e) {}
+  window.open(url, '_blank');
+}
+async function quotePdfUrl(id) {
+  const r = await api('quotePdf', { id: id });
+  if (!r.ok) { alert(r.message); return ''; }
+  return r.url;
+}
+async function quotePdf(id) { const u = await quotePdfUrl(id); if (u) openUrl(u); }
+async function quoteShare(id) {
+  const u = await quotePdfUrl(id);
+  if (!u) return;
+  const q = (QD.quotes || []).find(x => x.id === id) || {};
+  location.href = 'https://line.me/R/share?text=' + encodeURIComponent('您好，附上' + (q.cust ? q.cust.name : '') + '廚餘處理設備報價單（編號 ' + (q.no || '') + '）：' + u);
+}
+
+/* ===== 報價單審核（御宇管理員） ===== */
+let AQ = { status: '待審核', list: [] };
+async function loadAdminQuotes(status) {
+  AQ.status = status == null ? AQ.status : status;
+  const box = $('#admin');
+  box.innerHTML = '<div class="center">讀取中…</div>';
+  window.scrollTo(0, 0);
+  try {
+    const r = await api('adminQuotes', { status: AQ.status });
+    if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
+    AQ.list = r.quotes;
+    const sts = ['待審核', '已核准', '已退回', '作廢', ''];
+    let h = '<button class="back" onclick="loadAdmin()">‹ 返回經銷商列表</button>' +
+      '<div class="card"><h2>報價單審核（' + r.quotes.length + '）</h2><div class="filters">' +
+      sts.map(s => '<button class="' + (s === AQ.status ? 'on' : '') + '" onclick="loadAdminQuotes(\'' + s + '\')">' + (s || '全部') + '</button>').join('') + '</div>' +
+      '<div class="hint">可直接調整數量與單價後核准。核准後給正式編號（報價日期＋A＋流水號）、產生 PDF，案件自動推進到「報價」並延長保護期。</div></div>';
+    if (!r.quotes.length) h += '<div class="center">沒有符合的報價單</div>';
+    h += r.quotes.map((q, i) => {
+      const edit = q.status === '待審核';
+      return '<div class="card case" data-i="' + i + '">' +
+        '<div class="top"><b>' + esc(q.cust.name) + '</b><span class="badge">' + esc(Q_BADGE[q.status] || q.status) + '</span></div>' +
+        '<div class="meta">' + (q.no ? '編號 ' + esc(q.no) + '｜' : '') + esc(q.id) + '｜案件 ' + esc(q.caseId) + '<br>' +
+          '經銷商：' + esc(q.company) + '（' + (esc(q.level) || '—') + '）｜承辦 ' + esc(q.handler) + (q.handlerPhone ? ' ' + esc(q.handlerPhone) : '') + '<br>' +
+          '建立 ' + esc(q.created) + (q.reviewed ? '｜審核 ' + esc(q.reviewed) + ' ' + esc(q.reviewer) : '') + '</div>' +
+        '<details class="detail"><summary>客戶資料</summary><div>統編 ' + (esc(q.cust.taxId) || '—') + '｜聯繫人 ' + (esc(q.cust.contact) || '—') +
+          '｜電話 ' + (esc(q.cust.phone) || '—') + '<br>地址 ' + (esc(q.cust.address) || '—') + '｜E-mail ' + (esc(q.cust.email) || '—') + '</div></details>' +
+        (edit ? '<table class="mt"><tr><th>品項</th><th>數量</th><th>未稅單價</th></tr>' + q.lines.map((l, k) =>
+          '<tr><td>' + esc(l.name) + '<br><small>建議 ' + (l.retail || 0).toLocaleString() + (q.warns && q.warns[k] ? '｜<span style="color:var(--red)">⚠ ' + esc(q.warns[k]) + '</span>' : '') + '</small></td>' +
+          '<td><input class="aq-qty" data-k="' + k + '" type="number" min="1" max="100" value="' + l.qty + '" style="width:64px;padding:6px"></td>' +
+          '<td><input class="aq-price" data-k="' + k + '" inputmode="numeric" value="' + l.price + '" style="padding:6px"></td></tr>').join('') + '</table>'
+          : linesTable(q.lines)) +
+        quoteTotalsHtml(q) +
+        (q.note ? '<div class="meta">備註：' + esc(q.note) + '</div>' : '') +
+        (q.comment ? '<div class="meta">審核意見：' + esc(q.comment) + '</div>' : '') +
+        (edit ? '<textarea class="aq-comment" placeholder="審核意見（退回時必填）" style="margin-top:8px"></textarea>' +
+          '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="reviewQuote(' + i + ', \'approve\')">核准並產生報價單</button></div>' +
+          '<div><button class="btn sm gray" onclick="reviewQuote(' + i + ', \'reject\')">退回</button></div></div>' : '') +
+        (q.status === '已核准' ? '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="quotePdf(\'' + esc(q.id) + '\')">下載 PDF</button></div>' +
+          '<div><button class="btn sm gray" onclick="cancelQuote(\'' + esc(q.id) + '\', () => loadAdminQuotes())">作廢</button></div></div>' : '') +
+      '</div>';
+    }).join('');
+    box.innerHTML = h;
+  } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
+}
+async function reviewQuote(i, action) {
+  const q = AQ.list[i];
+  const card = document.querySelector('#admin .card[data-i="' + i + '"]');
+  const comment = card.querySelector('.aq-comment').value;
+  if (action === 'reject' && !comment.trim()) { alert('退回請填寫原因'); return; }
+  const lines = q.lines.map((l, k) => Object.assign({}, l, { qty: card.querySelector('.aq-qty[data-k="' + k + '"]').value,
+    price: card.querySelector('.aq-price[data-k="' + k + '"]').value.replace(/[,\s]/g, '') }));
+  if (!confirm(action === 'approve' ? '確定核准「' + q.cust.name + '」的報價單？核准後會給正式編號並產生 PDF。' : '確定退回這張報價單？')) return;
+  const btns = card.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
+  try {
+    const r = await api('adminQuoteReview', { id: q.id, action: action, comment: comment, lines: action === 'approve' ? lines : null });
+    alert(r.ok ? '✅ ' + r.message : r.message);
+    loadAdminQuotes();
+  } catch (e) { alert('連線失敗，請稍後再試'); btns.forEach(b => b.disabled = false); }
+}
+
 /* ===== 管理後台（僅御宇管理員） ===== */
 let adminAgents = [];
 async function loadAdmin() {
@@ -822,7 +1032,8 @@ async function loadAdmin() {
       '<div class="row" style="margin-top:10px"><div><button class="btn sm" onclick="loadAdminCases(\'\', \'待確認\')">全部待確認</button></div>' +
       '<div><button class="btn sm" onclick="loadAdminCases(\'\', \'\', 1)">成交進度追蹤</button></div></div>' +
       '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadMonthly()">月結差價報表</button></div>' +
-      '<div><button class="btn sm" onclick="loadTree()">經銷架構</button></div></div></div>';
+      '<div><button class="btn sm" onclick="loadTree()">經銷架構</button></div></div>' +
+      '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadAdminQuotes(\'待審核\')">報價單審核</button></div></div></div>';
     if (waiting.length) {
       h += '<div class="card"><h2>待審核經銷商（' + waiting.length + '）</h2>' + waiting.map(a => {
         const i = adminAgents.indexOf(a);
@@ -945,6 +1156,7 @@ function caseCard(c) {
       row('關係', c.relation) + row('聯繫方式', c.canContact) + row('陪同拜訪', c.accompany) + row('建議時間', c.visitTime) +
       row('報備備註', c.note) + row('報備人手機', c.agentPhone) +
     '</details>' +
+    (quotable(c.status) ? '<button class="btn sm gray" style="margin-top:8px" onclick="openQuote(\'' + esc(c.id) + '\', \'admin\')">📄 報價單</button>' : '') +
     (c.status === '重複(未受理)' ? '<div class="meta">' + esc(c.reply) + '</div>' :
     '<div class="edit" data-id="' + esc(c.id) + '" data-level="' + esc(c.level) + '" data-up="' + (c.uplineId ? 1 : '') + '">' +
       '<label class="dl">階段<select class="e-stage">' + opt(STAGES.concat(['未成交']), c.stage) + '</select></label>' +
