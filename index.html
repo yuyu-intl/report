@@ -388,7 +388,7 @@ function openTab(name) {
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => openTab(t.dataset.t));
 const canReport = () => ME.isAdmin || (ME.agent && ME.agent.status === '已核准');
-const feeOf = (model, level) => { const p = ME.prices[model], k = LV[level]; return p && k ? Math.round((p.retail - p[k]) * 10) / 10 : ''; };
+const feeOf = (model, level, price) => { const p = ME.prices[model], k = LV[level]; return p && k ? Math.round(((Number(price) > 0 ? Number(price) : p.retail) - p[k]) * 10) / 10 : ''; };
 
 /* ===== 經銷商登記 ===== */
 function refMode() {
@@ -1270,8 +1270,8 @@ function caseCard(c) {
       '<label class="dl">階段<select class="e-stage">' + opt(STAGES.concat(['未成交']), c.stage) + '</select></label>' +
       '<label class="dl">狀態<select class="e-status">' + opt(['待確認', '有效', '成交', '未成交', '已釋出', '無效'], c.status) + '</select></label>' +
       '<label class="dl">機型<select class="e-model" onchange="feePreview(this)">' + opt(ME.models, c.model, '未選') + '</select></label>' +
-      '<label class="dl">成交價（萬）<input class="e-price" inputmode="decimal" value="' + esc(c.price) + '" placeholder="預設建議售價"></label>' +
-      '<div class="feeprev">' + (c.model ? '服務費 ' + esc(feeOf(c.model, c.level)) + ' 萬（' + esc(c.level) + '）' : '選擇機型後顯示服務費') + '</div>' +
+      '<label class="dl">成交價（萬）<input class="e-price" inputmode="decimal" value="' + esc(c.price) + '" placeholder="預設建議售價" oninput="feePreview(this)"></label>' +
+      '<div class="feeprev">' + (c.model ? '服務費 ' + esc(feeOf(c.model, c.level, c.price)) + ' 萬（' + esc(c.level) + '，成交價 − 經銷價）' : '選擇機型後顯示服務費') + '</div>' +
       dt('signDate', '簽約日') + dt('pay1', '一期款 50%') + dt('deliverDate', '交機日') + dt('pay2', '二期款 40%') +
       dt('acceptDate', '驗收日') + dt('pay3', '三期款 10%') + dt('feePaid', '服務費發放日') + (c.uplineId ? dt('ovPaid', '團隊差價發放日') : '') +
       dt('returnDate', '退貨／解約日') +
@@ -1282,9 +1282,9 @@ function caseCard(c) {
 }
 function feePreview(sel) {
   const w = sel.closest('.edit');
-  const m = sel.value, lv = w.dataset.level;
+  const m = w.querySelector('.e-model').value, lv = w.dataset.level, pr = w.querySelector('.e-price').value;
   const ov = m && w.dataset.up && LV[lv] !== 'A' ? Math.round((ME.prices[m][LV[lv]] - ME.prices[m].A) * 10) / 10 : 0;
-  w.querySelector('.feeprev').textContent = m ? '服務費 ' + feeOf(m, lv) + ' 萬（' + lv + '）' + (ov > 0 ? '｜上線團隊差價 ' + ov + ' 萬' : '') + '｜建議售價 ' + ME.prices[m].retail + ' 萬' : '選擇機型後顯示服務費';
+  w.querySelector('.feeprev').textContent = m ? '服務費 ' + feeOf(m, lv, pr) + ' 萬（' + lv + '，成交價 − 經銷價）' + (ov > 0 ? '｜上線團隊差價 ' + ov + ' 萬' : '') + '｜建議售價 ' + ME.prices[m].retail + ' 萬' : '選擇機型後顯示服務費';
   const p = w.querySelector('.e-price'); if (m && !p.value) p.placeholder = '預設 ' + ME.prices[m].retail;
 }
 async function saveCase(btn) {
