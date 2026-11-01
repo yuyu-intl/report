@@ -282,6 +282,7 @@
   <div id="team" class="hidden"></div>
   <div id="bonus" class="hidden"></div>
   <div id="quote" class="hidden"></div>
+  <div id="progress" class="hidden"></div>
   <div id="admin" class="hidden"></div>
 
   <!-- 產品服務 -->
@@ -373,7 +374,7 @@ async function api(action, data) {
 }
 
 function show(id) {
-  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'team', 'bonus', 'quote', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
+  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'team', 'bonus', 'quote', 'progress', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
   window.scrollTo(0, 0);
 }
 function openTab(name) {
@@ -557,7 +558,10 @@ async function loadCases() {
         (c.model ? '<div class="fee">機型 ' + esc(c.model) + (c.fee !== '' ? '｜預估服務費 <b>' + esc(c.fee) + ' 萬</b>（未稅，驗收且全額付清後結算）' : '') + '</div>' : '') +
         dateLine(c) +
         (c.reply ? '<div class="meta">御宇回覆：' + esc(c.reply) + '</div>' : '') +
-        (ME.quoteOpen && quotable(c.status) ? '<button class="btn sm gray" style="margin-top:8px" onclick="openQuote(\'' + esc(c.id) + '\')">📄 報價單</button>' : '') +
+        '<div class="row" style="margin-top:8px">' +
+          (c.status === '待確認' || c.status === '有效' ? '<div><button class="btn sm" onclick="openProgress(\'' + esc(c.id) + '\')">📝 回報進度</button></div>' : '') +
+          (ME.quoteOpen && quotable(c.status) ? '<div><button class="btn sm gray" onclick="openQuote(\'' + esc(c.id) + '\')">📄 報價單</button></div>' : '') +
+        '</div>' +
       '</div>').join('');
   } catch (e) {
     box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>';
@@ -954,6 +958,109 @@ async function quoteShare(id) {
   location.href = 'https://line.me/R/share?text=' + encodeURIComponent('您好，附上' + (q.cust ? q.cust.name : '') + '廚餘處理設備報價單（編號 ' + (q.no || '') + '）：' + u);
 }
 
+/* ===== 進度回報（經銷商回報初訪／場勘／環境評估 → 直接推進，不需審核） ===== */
+let PG = null;
+const PG_BADGE = { '已生效': '✅ 已推進' };
+const PG_TARGET = { '初訪': '初訪', '場勘': '場勘', '環境評估': '評估通過' };
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+function filesHtml(files) {
+  return files && files.length ? '<div class="meta">附件：' + files.map(f => '<a href="#" onclick="openUrl(\'' + esc(f.url) + '\');return false">' + esc(f.name) + '</a>').join('、') + '</div>' : '';
+}
+async function openProgress(caseId) {
+  show('progress');
+  const box = $('#progress');
+  box.innerHTML = '<div class="center">讀取中…</div>';
+  try {
+    const r = await api('progressInit', { caseId: caseId });
+    if (!r.ok) { box.innerHTML = '<button class="back" onclick="openTab(\'list\')">‹ 返回</button><div class="center">' + esc(r.message) + '</div>'; return; }
+    PG = r;
+    const open = r.status === '待確認' || r.status === '有效';
+    let h = '<button class="back" onclick="openTab(\'list\')">‹ 返回我的案件</button>' +
+      '<div class="card"><h2>回報進度｜' + esc(r.org) + '</h2>' +
+      '<div class="meta">' + esc(r.caseId) + '｜目前階段：' + (esc(r.stage) || '—') + '｜保護期至：' + (esc(r.protectUntil) || '—') + '</div>' +
+      progressBar(r.stage) +
+      '<div class="hint" style="margin-top:8px">完成初訪、場勘，或完成「設備安裝環境評估表」後請在這裡回報。送出後案件立即推進到該階段、保護期延長 90 天，御宇會收到通知。報價階段起由御宇審核報價單。</div></div>';
+    if (open) h += '<form class="card" id="pgForm" onsubmit="submitProgress(event)"><h2>新增回報</h2>' +
+      '<label>回報項目 <span class="req">*</span></label><div class="chips">' +
+        r.items.map((x, i) => '<label><input type="radio" name="item" value="' + esc(x) + '"' + (i === 0 ? ' checked' : '') + ' onchange="pgHint()">' + esc(x) + '</label>').join('') + '</div>' +
+      '<div class="hint" id="pgHint"></div>' +
+      '<label>日期 <span class="req">*</span></label><input type="date" name="date" value="' + today() + '" max="' + today() + '">' +
+      '<label>說明 <span class="req">*</span></label><textarea name="note" placeholder="例：拜訪總務王經理，確認每日廚餘約 250 公斤；預計放置於後場卸貨區，需確認電源與排水"></textarea>' +
+      '<label>附件（照片或 PDF，最多 5 個）</label><input type="file" name="files" accept="image/*,application/pdf" multiple>' +
+      '<button class="btn" id="pgBtn" style="margin-top:12px" type="submit">送出回報</button></form>';
+    else h += '<div class="card"><div class="meta">案件目前為「' + esc(r.status) + '」，不需要回報初訪／場勘進度。</div></div>';
+    h += '<div class="card"><h2>回報紀錄（' + r.reports.length + '）</h2>' + (r.reports.length ? r.reports.map(p =>
+      '<div class="pending"><div class="top"><b>' + esc(p.item) + '｜' + esc(p.date) + '</b><span class="badge">' + esc(PG_BADGE[p.status] || p.status) + '</span></div>' +
+      '<div class="meta">' + esc(p.note) + '</div>' + filesHtml(p.files) +
+      '<div class="meta">回報 ' + esc(p.created) + (p.reporter ? '｜' + esc(p.reporter) : '') + '</div></div>').join('')
+      : '<div class="meta">尚無回報</div>') + '</div>';
+    box.innerHTML = h;
+    if (open) pgHint();
+    window.scrollTo(0, 0);
+  } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
+}
+function pgHint() {
+  const v = ($('#pgForm').querySelector('input[name=item]:checked') || {}).value;
+  $('#pgHint').textContent = v === '環境評估' ? '請附上填好的「設備安裝環境評估表」（拍照或 PDF），送出後推進到「評估通過」；御宇會將評估表轉中信技術審核（簽約前須通過）。'
+    : '送出後推進到「' + (PG_TARGET[v] || v) + '」。建議附上現場照片。';
+}
+// 照片縮到長邊 1600px 再上傳；PDF 原檔上傳（10MB 以內）
+function readFile(f) {
+  return new Promise((ok, bad) => {
+    if (f.type === 'application/pdf') {
+      if (f.size > 10 * 1024 * 1024) { bad(new Error('「' + f.name + '」超過 10MB')); return; }
+      const fr = new FileReader(); fr.onload = () => ok({ name: f.name, type: f.type, data: String(fr.result).split(',')[1] }); fr.onerror = () => bad(fr.error); fr.readAsDataURL(f); return;
+    }
+    const img = new Image(), url = URL.createObjectURL(f);
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+      ok({ name: f.name.replace(/\.\w+$/, '') + '.jpg', type: 'image/jpeg', data: cv.toDataURL('image/jpeg', 0.82).split(',')[1] });
+    };
+    img.onerror = () => bad(new Error('無法讀取「' + f.name + '」'));
+    img.src = url;
+  });
+}
+async function submitProgress(e) {
+  e.preventDefault();
+  const f = $('#pgForm');
+  const item = (f.querySelector('input[name=item]:checked') || {}).value;
+  const list = [...f.files.files];
+  if (list.length > 5) { alert('附件最多 5 個'); return; }
+  if (item === '環境評估' && !list.length) { alert('請附上「設備安裝環境評估表」'); return; }
+  if (f.note.value.trim().length < 5) { alert('請簡短說明情況'); return; }
+  const btn = $('#pgBtn'); btn.disabled = true; btn.textContent = list.length ? '上傳附件中…' : '送出中…';
+  try {
+    const files = await Promise.all(list.map(readFile));
+    const r = await api('progressSubmit', { caseId: PG.caseId, item: item, date: f.date.value, note: f.note.value, files: files });
+    alert(r.ok ? '✅ ' + r.message : r.message);
+    if (r.ok) openProgress(PG.caseId);
+  } catch (err) { alert(err.message && err.message !== 'relogin' ? err.message : '連線失敗，請稍後再試'); }
+  finally { btn.disabled = false; btn.textContent = '送出回報'; }
+}
+
+/* ===== 進度回報紀錄（御宇管理員查看） ===== */
+async function loadAdminProgress() {
+  const box = $('#admin');
+  box.innerHTML = '<div class="center">讀取中…</div>';
+  window.scrollTo(0, 0);
+  try {
+    const r = await api('adminProgress', {});
+    if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
+    let h = '<button class="back" onclick="loadAdmin()">‹ 返回經銷商列表</button>' +
+      '<div class="card"><h2>進度回報（' + r.reports.length + '）</h2>' +
+      '<div class="hint">經銷商回報初訪／場勘／環境評估後，案件已自動推進並延長保護期，不需審核。若回報有誤，請到該案件卡片直接修改階段。環境評估表請轉中信技術審核。</div></div>';
+    if (!r.reports.length) h += '<div class="center">尚無回報</div>';
+    h += r.reports.map(p => '<div class="card case">' +
+      '<div class="top"><b>' + esc(p.org || p.caseId) + '</b><span class="badge">' + esc(p.item) + '</span></div>' +
+      '<div class="meta">' + esc(p.caseId) + (p.city ? '｜' + esc(p.city) : '') + '｜經銷商 ' + esc(p.company) + (p.reporter ? '／' + esc(p.reporter) : '') + '<br>' +
+        '日期 ' + esc(p.date) + '｜回報 ' + esc(p.created) + '<br>目前階段 ' + (esc(p.stage) || '—') + '｜保護期至 ' + (esc(p.protectUntil) || '—') + '</div>' +
+      '<div class="detail">' + esc(p.note) + '</div>' + filesHtml(p.files) + '</div>').join('');
+    box.innerHTML = h;
+  } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
+}
+
 /* ===== 報價單審核（御宇管理員） ===== */
 let AQ = { status: '待審核', list: [] };
 async function loadAdminQuotes(status) {
@@ -1033,7 +1140,8 @@ async function loadAdmin() {
       '<div><button class="btn sm" onclick="loadAdminCases(\'\', \'\', 1)">成交進度追蹤</button></div></div>' +
       '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadMonthly()">月結差價報表</button></div>' +
       '<div><button class="btn sm" onclick="loadTree()">經銷架構</button></div></div>' +
-      '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadAdminQuotes(\'待審核\')">報價單審核</button></div></div></div>';
+      '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadAdminProgress()">進度回報紀錄</button></div>' +
+      '<div><button class="btn sm" onclick="loadAdminQuotes(\'待審核\')">報價單審核</button></div></div></div>';
     if (waiting.length) {
       h += '<div class="card"><h2>待審核經銷商（' + waiting.length + '）</h2>' + waiting.map(a => {
         const i = adminAgents.indexOf(a);
