@@ -1370,6 +1370,15 @@ async function markPaid(agentId) {
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn() || tokenExpired()) { relogin(); return; }
     const q = new URLSearchParams(location.search);
+    if (q.get('event')) {   // 說明會報名：帶 LINE 資料轉到報名頁
+      let email = '', exp = 0;
+      try { const t = liff.getDecodedIDToken(); email = t.email || ''; exp = t.exp || 0; } catch (e) {}
+      let name = '';
+      try { name = (await liff.getProfile()).displayName || ''; } catch (e) {}
+      try { sessionStorage.setItem('yyLine', JSON.stringify({ idToken: liff.getIDToken(), name: name, email: email, exp: exp })); } catch (e) {}
+      location.replace('event.html?e=' + encodeURIComponent(q.get('event')) + (q.get('ref') ? '&ref=' + encodeURIComponent(q.get('ref')) : ''));
+      return;
+    }
     SETUP = q.get('setup') || '';
     const r = await api('init', { ref: q.get('ref') || '', adminKey: q.get('adminKey') || '', setup: SETUP });
     if (!r.ok) { $('#loading').textContent = r.message; return; }
