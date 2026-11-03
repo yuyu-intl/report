@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>BM 系列廚餘全去化處理機說明會｜報名</title>
+<style>
+  :root{--g:#5AAF48;--b:#047EB1;--deep:#1f3b57;--gold:#a8823c;--bd:#d6e2e8;--tx:#1b2a33;--mu:#64737d;--red:#c0392b;--bg:#f6f3ee}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--tx);font-size:16px}
+  .hero{background:linear-gradient(160deg,#1f3b57,#2c5272);color:#fff;padding:22px 18px 26px;text-align:center}
+  .hero .org{font-size:13px;opacity:.85;letter-spacing:1px}
+  .hero .tag{display:inline-block;margin-top:10px;background:#f1e3c4;color:#5c4210;border-radius:20px;padding:3px 14px;font-size:13px;font-weight:600}
+  .hero h1{margin:10px 0 4px;font-size:24px;letter-spacing:1px;line-height:1.35}
+  .hero h1 em{font-style:normal;color:#e8c77d}
+  .hero .sub{font-size:14px;opacity:.9}
+  main{max-width:560px;margin:-14px auto 0;padding:0 14px 40px}
+  .card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px}
+  .card h2{font-size:15px;margin:0 0 10px;color:var(--deep);display:flex;align-items:center;gap:8px}
+  .card h2::before{content:"";width:4px;height:16px;border-radius:2px;background:var(--gold)}
+  .info div{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--bd);font-size:15px}
+  .info div:last-child{border-bottom:0}
+  .info b{flex:0 0 48px;color:var(--mu);font-weight:400}
+  .feat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .feat span{background:#f4f8fa;border-radius:8px;padding:8px 4px;text-align:center;font-size:13px;color:var(--deep)}
+  label{display:block;font-size:14px;margin:12px 0 4px}
+  label .req{color:var(--red)}
+  input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;font-size:16px;background:#fff;color:var(--tx);font-family:inherit}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--b);border-color:transparent}
+  textarea{min-height:64px}
+  .row{display:flex;gap:10px}.row>div{flex:1;min-width:0}
+  .btn.line{display:block;box-sizing:border-box;text-align:center;text-decoration:none;background:#06C755;color:#fff;margin:4px 0 10px}
+  .btn.line.hidden{display:none}
+  .hint{font-size:12px;color:var(--mu);margin-top:4px;line-height:1.5}
+  .consent{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.55;margin-top:6px}
+  .consent input{width:auto;margin-top:3px}
+  .btn{width:100%;padding:14px;border:0;border-radius:10px;background:linear-gradient(90deg,var(--g),var(--b));color:#fff;font-size:16px;font-weight:600;margin-top:4px}
+  .btn:disabled{opacity:.5}
+  .ref{background:#eef8ec;border:1px solid #cfe9c8;border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+  .closed{background:#fdecea;color:var(--red);border-radius:8px;padding:12px;text-align:center;font-weight:600}
+  .done{text-align:center;padding:28px 16px}
+  .done .ic{font-size:46px}
+  .done p{line-height:1.7}
+  .call{display:block;text-align:center;text-decoration:none;margin-top:10px}
+  .foot{font-size:12px;color:var(--mu);text-align:center;line-height:1.6;margin-top:6px}
+  .hp{position:absolute;left:-9999px}
+  .center{text-align:center;color:var(--mu);padding:30px 0}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="org">御宇國際企業有限公司 誠摯邀請</div>
+  <div class="tag">飯店・餐廳業者專場</div>
+  <h1>讓廚餘處理<br><em>跟上出餐的節奏</em></h1>
+  <div class="sub">BM 系列廚餘全去化處理機說明會</div>
+</div>
+<main>
+  <div class="card">
+    <h2>活動資訊</h2>
+    <div class="info" id="info"><div class="center">讀取中…</div></div>
+    <div class="feat"><span>免事前瀝乾</span><span>免另做油水分離</span><span>可連續投料</span></div>
+    <div class="hint" style="margin-top:8px">機型：50／99／199／400 kg／日（各機型每日最大處理量）。適用廚餘須依規範分類；場域截油、污水處理及排水銜接仍須另行評估。</div>
+  </div>
+
+  <div id="closedBox" class="card hidden"><div class="closed" id="closedMsg"></div>
+    <a class="btn call" href="tel:+886921899383">洽詢專線 0921-899-383</a></div>
+
+  <form id="f" class="card hidden" autocomplete="on" novalidate>
+    <h2>廠商報名</h2>
+    <div class="ref hidden" id="refBox"></div>
+    <div class="ref hidden" id="lineBox"></div>
+    <a class="btn line hidden" id="lineBtn" href="#">用 LINE 帶入資料</a>
+    <div class="hint" style="margin-top:0">本場次僅開放飯店、餐廳等業者報名。</div>
+    <label>公司／機構名稱 <span class="req">*</span></label><input name="company" required placeholder="例：○○大飯店股份有限公司" autocomplete="organization">
+    <div class="row">
+      <div><label>統一編號</label><input name="taxId" inputmode="numeric" maxlength="8" placeholder="選填"></div>
+      <div><label>縣市 <span class="req">*</span></label><select name="city" required><option value="">請選擇</option>
+        <option>臺北市</option><option>新北市</option><option>基隆市</option><option>桃園市</option><option>新竹市</option><option>新竹縣</option>
+        <option>苗栗縣</option><option>臺中市</option><option>彰化縣</option><option>南投縣</option><option>雲林縣</option><option>嘉義市</option>
+        <option>嘉義縣</option><option>臺南市</option><option>高雄市</option><option>屏東縣</option><option>宜蘭縣</option><option>花蓮縣</option>
+        <option>臺東縣</option><option>澎湖縣</option><option>金門縣</option><option>連江縣</option></select></div>
+    </div>
+    <label>產業類型 <span class="req">*</span></label>
+    <select name="industry" required><option value="">請選擇</option>
+      <option>飯店／旅館</option><option>餐廳／連鎖餐飲</option><option>宴會廳／婚宴會館</option><option>團膳業者</option>
+      <option>企業員工餐廳</option><option>醫院／長照機構</option><option>學校</option><option>食品加工業</option><option>其他</option></select>
+    <div class="row">
+      <div><label>出席人姓名 <span class="req">*</span></label><input name="name" required autocomplete="name"></div>
+      <div><label>職稱</label><input name="title" placeholder="例：總務經理"></div>
+    </div>
+    <div class="row">
+      <div><label>手機 <span class="req">*</span></label><input name="phone" inputmode="tel" required placeholder="09xxxxxxxx" autocomplete="tel"></div>
+      <div style="flex:0 0 110px"><label>出席人數</label><select name="people"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+    </div>
+    <label>Email</label><input name="email" inputmode="email" placeholder="選填" autocomplete="email">
+    <div class="row">
+      <div><label>每日廚餘量（估）</label><select name="waste"><option value="">請選擇</option>
+        <option>50 公斤以下</option><option>50–100 公斤</option><option>100–200 公斤</option><option>200–400 公斤</option><option>400 公斤以上</option><option>不清楚</option></select></div>
+      <div><label>目前處理方式</label><select name="method"><option value="">請選擇</option>
+        <option>委外清運業者</option><option>養豬戶回收</option><option>環保局清運</option><option>已有處理設備</option><option>不清楚</option><option>其他</option></select></div>
+    </div>
+    <label>想了解的問題</label><textarea name="note" placeholder="選填，例如：放置空間、耗電、殘渣去向、補助"></textarea>
+    <input class="hp" name="website" tabindex="-1" autocomplete="off">
+    <div class="consent"><input type="checkbox" id="consent">
+      <label for="consent" style="margin:0">我同意御宇國際企業有限公司蒐集上述資料，作為本次說明會報名、活動通知及廚餘處理設備介紹聯繫之用。</label></div>
+    <button class="btn" id="btn" type="submit" style="margin-top:14px">送出報名</button>
+  </form>
+
+  <div id="done" class="card done hidden"><div class="ic">✅</div><p id="doneMsg"></p>
+    <a class="btn call" href="tel:+886921899383">洽詢專線 0921-899-383</a></div>
+
+  <div class="foot">主辦：御宇國際企業有限公司｜洽詢專線 0921-899-383</div>
+</main>
+<script>
+const LIFF_ID = '2012023290-1MVnfTqT';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxlbCTV9QIBRMLnBoHAtrgpO8H3mH2jJ9KfRxBtK9QyvbpzUGsRrbWPDOh3h5q0QHN-/exec';
+const q = new URLSearchParams(location.search);
+const EVENT = q.get('e') || '20261112', REF = (q.get('ref') || '').trim();
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function call(action, data) {
+  const res = await fetch(GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, data }) });
+  return res.json();
+}
+(async function init() {
+  try {
+    const r = await call('eventInfo', { event: EVENT, ref: REF });
+    if (!r.ok) { $('#info').innerHTML = '<div>' + esc(r.message) + '</div>'; return; }
+    const e = r.event;
+    $('#info').innerHTML = '<div><b>時間</b><span>' + esc(e.time) + '</span></div><div><b>地點</b><span>' + esc(e.place) + '</span></div>' +
+      '<div><b>對象</b><span>飯店、餐廳等業者（僅限廠商報名）</span></div><div><b>截止</b><span>' + esc(e.deadline) + '</span></div>';
+    if (r.closed) { $('#closedMsg').textContent = r.closed; $('#closedBox').classList.remove('hidden'); return; }
+    if (r.ref) { $('#refBox').textContent = '推薦單位：' + r.ref.company + '（' + r.ref.code + '）'; $('#refBox').classList.remove('hidden'); }
+    $('#f').classList.remove('hidden');
+    lineFill();
+  } catch (err) { $('#info').innerHTML = '<div>連線失敗，請稍後重新整理，或來電 0921-899-383 報名。</div>'; }
+})();
+// 從 LINE 進入（liff 連結）時，報備系統首頁會把 LINE 登入資料存在 sessionStorage 再轉到本頁
+let LINE = null;
+function lineFill() {
+  try { LINE = JSON.parse(sessionStorage.getItem('yyLine') || 'null'); } catch (e) {}
+  if (LINE && LINE.exp && LINE.exp * 1000 < Date.now()) LINE = null;
+  const f = $('#f');
+  if (!LINE) {
+    $('#lineBtn').href = 'https://liff.line.me/' + LIFF_ID + '?event=' + encodeURIComponent(EVENT) + (REF ? '&ref=' + encodeURIComponent(REF) : '');
+    $('#lineBtn').classList.remove('hidden');
+    return;
+  }
+  if (LINE.name && !f.name.value) f.name.value = LINE.name;
+  if (LINE.email && !f.email.value) f.email.value = LINE.email;
+  $('#lineBox').textContent = '已帶入 LINE 資料：' + (LINE.name || '') + (LINE.email ? '（' + LINE.email + '）' : '') + '，請確認後補齊其餘欄位。';
+  $('#lineBox').classList.remove('hidden');
+}
+$('#f').onsubmit = async e => {
+  e.preventDefault();
+  const f = $('#f');
+  const data = Object.fromEntries(new FormData(f).entries());
+  const need = { company: '公司名稱', city: '縣市', industry: '產業類型', name: '出席人姓名', phone: '手機' };
+  for (const k in need) if (!String(data[k] || '').trim()) { alert('請填寫「' + need[k] + '」'); f[k].focus(); return; }
+  if (data.taxId.trim() && !/^\d{8}$/.test(data.taxId.trim())) { alert('統一編號為 8 碼數字（可不填）'); f.taxId.focus(); return; }
+  if (!/^09\d{8}$/.test(data.phone.replace(/\D/g, ''))) { alert('手機格式不正確（09 開頭 10 碼）'); f.phone.focus(); return; }
+  if (!$('#consent').checked) { alert('請勾選個資同意'); return; }
+  data.consent = true; data.event = EVENT; data.ref = REF;
+  if (LINE && LINE.idToken) data.idToken = LINE.idToken;
+  const btn = $('#btn'); btn.disabled = true; btn.textContent = '送出中…';
+  try {
+    const r = await call('eventRegister', data);
+    if (!r.ok) { alert(r.message); return; }
+    $('#doneMsg').textContent = r.message;
+    f.classList.add('hidden'); $('#done').classList.remove('hidden'); window.scrollTo(0, 0);
+  } catch (err) { alert('連線失敗，請稍後再試，或來電 0921-899-383 報名'); }
+  finally { btn.disabled = false; btn.textContent = '送出報名'; }
+};
+</script>
+</body>
+</html>
