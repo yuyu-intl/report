@@ -124,6 +124,7 @@
   <button class="tab on" data-t="form">新增報備</button>
   <button class="tab" data-t="list">我的案件</button>
   <button class="tab" data-t="svc">產品服務</button>
+  <button class="tab hidden" data-t="event" id="eventTab">說明會</button>
   <button class="tab hidden" data-t="team" id="teamTab">我的團隊</button>
   <button class="tab hidden" data-t="bonus" id="bonusTab">業務獎金</button>
   <button class="tab hidden" data-t="admin" id="adminTab">管理後台</button>
@@ -280,6 +281,7 @@
   <div id="list" class="hidden"></div>
 
   <!-- 管理後台 -->
+  <div id="event" class="hidden"></div>
   <div id="team" class="hidden"></div>
   <div id="bonus" class="hidden"></div>
   <div id="quote" class="hidden"></div>
@@ -375,7 +377,7 @@ async function api(action, data) {
 }
 
 function show(id) {
-  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'team', 'bonus', 'quote', 'progress', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
+  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'event', 'team', 'bonus', 'quote', 'progress', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
   window.scrollTo(0, 0);
 }
 function openTab(name) {
@@ -383,6 +385,7 @@ function openTab(name) {
   if (name === 'list') loadCases();
   else if (name === 'admin') loadAdmin();
   else if (name === 'team') loadTeam();
+  else if (name === 'event') loadEvent();
   else if (name === 'bonus') loadBonus();
   else if (name === 'form' && !canReport()) showReg();
   else show(name);
@@ -685,6 +688,48 @@ async function teamSet(id, patch) {
 function copyInvite() {
   const url = inviteUrl(teamData.code);
   const done = () => alert('已複製邀請連結');
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => prompt('請長按複製', url));
+  else prompt('請長按複製', url);
+}
+
+/* ===== 說明會：我的專屬報名連結＋透過我報名的名單 ===== */
+const EVENT_KEY = '20261112';
+let evData = null;
+async function loadEvent() {
+  show('event');
+  const box = $('#event');
+  box.innerHTML = '<div class="center">讀取中…</div>';
+  try {
+    const r = await api('myEventRefs', { event: EVENT_KEY });
+    if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
+    evData = r;
+    const e = r.event;
+    let h = '<div class="card"><h2>' + esc(e.name) + '</h2>' +
+      '<div class="hint" style="margin-top:0">' + esc(e.time) + '｜' + esc(e.place) + '｜報名截止 ' + esc(e.deadline) + (r.closed ? '（<b style="color:var(--red)">已截止</b>）' : '') + '</div>';
+    if (r.code) {
+      const msg = '【誠摯邀請】' + e.name + '\n' + e.time + '\n' + e.place + '\n線上報名：' + r.lineUrl;
+      h += '<div class="invite">我的推薦碼 <b>' + esc(r.code) + '</b><br>LINE 報名連結（自動帶入對方 LINE 資料）：<br>' + esc(r.lineUrl) +
+        '<br><br>一般網頁連結（FB、Email、QR Code 用）：<br>' + esc(r.webUrl) + '</div>' +
+        '<div class="hint">從這兩個連結報名的廠商都會記在您名下，名單顯示在下方。</div>' +
+        '<div class="row"><div><a class="btn sm" href="https://line.me/R/share?text=' + encodeURIComponent(msg) + '">用 LINE 分享</a></div>' +
+        '<div><button class="btn sm gray" onclick="copyEv(\'lineUrl\')">複製 LINE 連結</button></div></div>' +
+        '<div class="row" style="margin-top:8px"><div><button class="btn sm gray" onclick="copyEv(\'webUrl\')">複製網頁連結</button></div></div>';
+    } else h += '<div class="hint">您的帳號尚無經銷商編號，無法產生專屬連結。</div>';
+    h += '</div>';
+    const sum = list => list.reduce((s, x) => s + x.people, 0);
+    const rowsHtml = (list, showRef) => list.map(x => '<div class="pending"><b>' + esc(x.company) + '</b>｜' + esc(x.name) + (x.title ? ' ' + esc(x.title) : '') + '｜' + x.people + ' 位' +
+      '<div class="meta">' + esc(x.city) + '｜' + esc(x.industry) + '｜<a href="tel:' + esc(x.phone) + '">' + esc(x.phone) + '</a>｜' + esc(x.time) +
+      (showRef ? '｜推薦 ' + esc(x.refName ? x.refName + '（' + x.ref + '）' : '無') : '') + (x.line ? '｜LINE ✓' : '') + '</div></div>').join('');
+    h += '<div class="card"><h2>透過我報名（' + r.list.length + ' 家／' + sum(r.list) + ' 位）</h2>' +
+      (r.list.length ? rowsHtml(r.list, false) : '<div class="hint">尚無人透過您的連結報名。</div>') + '</div>';
+    if (r.all) h += '<div class="card"><h2>全部報名（管理員）' + r.all.length + ' 家／' + sum(r.all) + ' 位</h2>' +
+      (r.all.length ? rowsHtml(r.all, true) : '<div class="hint">尚無報名。</div>') + '</div>';
+    box.innerHTML = h;
+  } catch (err) { if (err.message !== 'relogin') box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
+}
+function copyEv(k) {
+  const url = evData[k];
+  const done = () => alert('已複製報名連結');
   if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => prompt('請長按複製', url));
   else prompt('請長按複製', url);
 }
@@ -1390,6 +1435,7 @@ async function markPaid(agentId) {
     if (r.isAdmin) $('#adminTab').classList.remove('hidden');
     if (r.adminGranted) alert('✅ 您已成為御宇國際報備系統的管理員，可使用「管理後台」。');
     if (r.isLeader) $('#teamTab').classList.remove('hidden');
+    if (r.isAdmin || (a && a.code && a.status === '已核准')) $('#eventTab').classList.remove('hidden');
     const canBonus = r.central || (r.isAdmin && r.centralAgents && r.centralAgents.length);
     if (canBonus) $('#bonusTab').classList.remove('hidden');
     fillAgent();
@@ -1399,7 +1445,7 @@ async function markPaid(agentId) {
       else if (r.setup) { showReg(); return; }
     }
     if (!canReport() && tab !== 'svc') { showReg(); return; }
-    openTab(['list', 'svc'].includes(tab) || (tab === 'admin' && r.isAdmin) || (tab === 'team' && r.isLeader) || (tab === 'bonus' && canBonus) ? tab : 'form');
+    openTab(['list', 'svc'].includes(tab) || (tab === 'admin' && r.isAdmin) || (tab === 'team' && r.isLeader) || (tab === 'event' && !$('#eventTab').classList.contains('hidden')) || (tab === 'bonus' && canBonus) ? tab : 'form');
   } catch (e) {
     if (e.message !== 'relogin') $('#loading').textContent = '初始化失敗：' + e.message + '（請關閉後重新開啟）';
   }
