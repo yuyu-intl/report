@@ -140,7 +140,8 @@ function loadPoster() {
 }
 loadPoster();
 function setPhone(p) {
-  const d = String(p || '').replace(/\D/g, '');
+  let d = String(p || '').replace(/\D/g, '');
+  if (/^9\d{8}$/.test(d)) d = '0' + d;   // 試算表把開頭 0 吃掉時補回
   if (!/^09\d{8}$/.test(d)) return;
   PHONE = d.replace(/^(\d{4})(\d{3})(\d{3})$/, '$1-$2-$3');
   document.querySelectorAll('.ph').forEach(x => x.textContent = PHONE);
