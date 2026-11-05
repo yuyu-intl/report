@@ -13,8 +13,9 @@
   header img{width:46px;height:46px}
   header h1{margin:0;font-size:18px;color:var(--b);letter-spacing:1px}
   header p{margin:2px 0 0;font-size:12px;color:var(--mu)}
-  .tabs{display:flex;background:#fff;border-bottom:1px solid var(--bd);position:sticky;top:74px;z-index:4}
-  .tab{flex:1;padding:12px 4px;text-align:center;border:0;background:none;font-size:15px;color:var(--mu);border-bottom:3px solid transparent}
+  .tabs{display:flex;background:#fff;border-bottom:1px solid var(--bd);position:sticky;top:74px;z-index:4;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:1 0 auto;white-space:nowrap;padding:12px 9px;text-align:center;border:0;background:none;font-size:15px;color:var(--mu);border-bottom:3px solid transparent}
   .tab.on{color:var(--b);border-bottom-color:var(--b);font-weight:600}
   main{padding:12px 16px 40px;max-width:640px;margin:0 auto}
   .card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
@@ -125,6 +126,7 @@
   <button class="tab on" data-t="form">新增報備</button>
   <button class="tab" data-t="list">我的案件</button>
   <button class="tab" data-t="svc">產品服務</button>
+  <button class="tab" data-t="calc">廚餘試算</button>
   <button class="tab hidden" data-t="event" id="eventTab">說明會</button>
   <button class="tab hidden" data-t="team" id="teamTab">我的團隊</button>
   <button class="tab hidden" data-t="bonus" id="bonusTab">業務獎金</button>
@@ -290,6 +292,26 @@
   <div id="admin" class="hidden"></div>
 
   <!-- 產品服務 -->
+  <div id="calc" class="hidden">
+    <div class="card">
+      <h2>廚餘量試算</h2>
+      <div class="row">
+        <div><label>日處理量（公斤／日）</label><input id="cDaily" type="number" inputmode="decimal" min="0" placeholder="例：120"></div>
+        <div><label>每月工作天</label><input id="cDays" type="number" inputmode="numeric" min="1" max="31" value="26"></div>
+      </div>
+      <label>目前月處理費（元／月，清運＋處理）</label><input id="cFee" type="number" inputmode="numeric" min="0" placeholder="例：15000">
+      <div class="hint">月處理費請填客戶目前每月付給清運業者的總金額。</div>
+      <div class="stats" style="grid-template-columns:repeat(2,1fr);margin-top:12px">
+        <div>月處理量<b id="cMonth">—</b></div>
+        <div>每公斤處理費<b id="cPerKg">—</b></div>
+        <div>年處理量<b id="cYear">—</b></div>
+        <div>年處理費<b id="cYearFee">—</b></div>
+      </div>
+      <div class="invite" id="cModel" style="margin-top:10px;display:none"></div>
+      <div class="hint">參考：台中市一般事業廢棄物（廚餘）115 年代清除＋代處理公定費率每噸 4,340 元（約每公斤 4.34 元）；民間清運報價常高於此。</div>
+      <div class="row" style="margin-top:10px"><div><button class="btn sm gray" id="cCopy">複製試算結果</button></div><div><button class="btn sm gray" id="cClear">清除</button></div></div>
+    </div>
+  </div>
   <div id="svc" class="hidden">
     <div class="notice">目前開放報備：<b>BM 廚餘處理機</b>。其他產品歡迎洽詢，報備功能將陸續開放。</div>
     <div class="card svc">
@@ -378,15 +400,17 @@ async function api(action, data) {
 }
 
 function show(id) {
-  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'event', 'team', 'bonus', 'quote', 'progress', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
+  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'calc', 'event', 'team', 'bonus', 'quote', 'progress', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
   window.scrollTo(0, 0);
 }
 function openTab(name) {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === name));
+  const on = document.querySelector('.tab.on'); if (on && on.scrollIntoView) on.scrollIntoView({ inline: 'center', block: 'nearest' });
   if (name === 'list') loadCases();
   else if (name === 'admin') loadAdmin();
   else if (name === 'team') loadTeam();
   else if (name === 'event') loadEvent();
+  else if (name === 'calc') show('calc');
   else if (name === 'bonus') loadBonus();
   else if (name === 'form' && !canReport()) showReg();
   else show(name);
@@ -692,6 +716,38 @@ function copyInvite() {
   if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => prompt('請長按複製', url));
   else prompt('請長按複製', url);
 }
+
+/* ===== 廚餘量試算：日處理量 × 工作天 → 月處理量；月處理費 ÷ 月處理量 → 每公斤處理費 ===== */
+const CALC_MODELS = [['BM-50', 50], ['BM-99', 99], ['BM-199', 199], ['BM-400', 400]];
+const nf = (n, d) => Number(n).toLocaleString('zh-TW', { maximumFractionDigits: d || 0 });
+let calcText = '';
+function calcRun() {
+  const daily = parseFloat($('#cDaily').value) || 0, days = parseFloat($('#cDays').value) || 0, fee = parseFloat($('#cFee').value) || 0;
+  const month = daily * days, perKg = month > 0 && fee > 0 ? fee / month : 0;
+  $('#cMonth').textContent = month ? nf(month) + ' kg' : '—';
+  $('#cYear').textContent = month ? nf(month * 12 / 1000, 1) + ' 噸' : '—';
+  $('#cPerKg').textContent = perKg ? nf(perKg, 2) + ' 元' : '—';
+  $('#cYearFee').textContent = fee ? nf(fee * 12) + ' 元' : '—';
+  let model = '';
+  if (daily > 0) {
+    const m = CALC_MODELS.find(x => x[1] >= daily);
+    model = m ? '建議機型：' + m[0] + '（每日最大處理量 ' + m[1] + ' kg）' : '建議機型：BM-400 × ' + Math.ceil(daily / 400) + ' 台（每台每日最大處理量 400 kg）';
+    if (m && daily > m[1] * 0.85) model += '，日量已接近上限，可評估上一級機型';
+  }
+  $('#cModel').textContent = model ? model + '。實際機型仍須現場評估。' : '';
+  $('#cModel').style.display = model ? '' : 'none';
+  calcText = daily ? ['【廚餘量試算】', '日處理量：' + nf(daily, 1) + ' kg／日', '每月工作天：' + nf(days) + ' 天',
+    '月處理量：' + nf(month) + ' kg（約 ' + nf(month / 1000, 2) + ' 噸）', fee ? '月處理費：' + nf(fee) + ' 元' : '',
+    perKg ? '每公斤處理費：' + nf(perKg, 2) + ' 元（每噸約 ' + nf(perKg * 1000) + ' 元）' : '', fee ? '年處理費：' + nf(fee * 12) + ' 元' : '',
+    model].filter(Boolean).join('\n') : '';
+}
+['cDaily', 'cDays', 'cFee'].forEach(id => $('#' + id).addEventListener('input', calcRun));
+$('#cClear').onclick = () => { $('#cDaily').value = ''; $('#cFee').value = ''; $('#cDays').value = 26; calcRun(); };
+$('#cCopy').onclick = () => {
+  if (!calcText) { alert('請先輸入日處理量'); return; }
+  if (navigator.clipboard) navigator.clipboard.writeText(calcText).then(() => alert('已複製，可貼到 LINE 給客戶'), () => prompt('請長按複製', calcText));
+  else prompt('請長按複製', calcText);
+};
 
 /* ===== 說明會：我的專屬報名連結＋透過我報名的名單 ===== */
 const EVENT_KEY = '20261112';
@@ -1445,8 +1501,8 @@ async function markPaid(agentId) {
       if (r.setup && r.setup.invalid) alert(r.central ? '此開通連結已使用過，您的帳號已開通，可直接報備。' : '開通連結無效或已使用過，請洽御宇國際。');
       else if (r.setup) { showReg(); return; }
     }
-    if (!canReport() && tab !== 'svc') { showReg(); return; }
-    openTab(['list', 'svc'].includes(tab) || (tab === 'admin' && r.isAdmin) || (tab === 'team' && r.isLeader) || (tab === 'event' && !$('#eventTab').classList.contains('hidden')) || (tab === 'bonus' && canBonus) ? tab : 'form');
+    if (!canReport() && !['svc', 'calc'].includes(tab)) { showReg(); return; }
+    openTab(['list', 'svc', 'calc'].includes(tab) || (tab === 'admin' && r.isAdmin) || (tab === 'team' && r.isLeader) || (tab === 'event' && !$('#eventTab').classList.contains('hidden')) || (tab === 'bonus' && canBonus) ? tab : 'form');
   } catch (e) {
     if (e.message !== 'relogin') $('#loading').textContent = '初始化失敗：' + e.message + '（請關閉後重新開啟）';
   }
