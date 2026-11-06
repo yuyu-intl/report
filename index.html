@@ -1372,6 +1372,7 @@ function caseCard(c) {
       row('關係', c.relation) + row('聯繫方式', c.canContact) + row('陪同拜訪', c.accompany) + row('建議時間', c.visitTime) +
       row('報備備註', c.note) + row('報備人手機', c.agentPhone) +
     '</details>' +
+    (c.status === '待確認' ? reviewBox(c) : '') +
     (quotable(c.status) ? '<button class="btn sm gray" style="margin-top:8px" onclick="openQuote(\'' + esc(c.id) + '\', \'admin\')">📄 報價單</button>' : '') +
     (c.status === '重複(未受理)' ? '<div class="meta">' + esc(c.reply) + '</div>' :
     '<div class="edit" data-id="' + esc(c.id) + '" data-level="' + esc(c.level) + '" data-up="' + (c.uplineId ? 1 : '') + '">' +
@@ -1387,6 +1388,33 @@ function caseCard(c) {
       '<button class="btn" onclick="saveCase(this)">儲存</button>' +
     '</div>') +
   '</div>';
+}
+// 報備審核：一般案件確認一次；兩道審核（包羅）先鄧昌勝預審，再御宇（周郁菁）確認
+function reviewBox(c) {
+  const two = c.twoStep, pre = c.preReview, me = ME.isPreReviewer;
+  let label = '確認報備（有效）', can = true, note = '';
+  if (two && !pre) { label = '預審通過（送御宇確認）'; can = !!me; note = me ? '本案需兩道審核，請先預審（第一道）。' : '⏳ 等待鄧昌勝預審（第一道）'; }
+  else if (two) { can = !me; note = '✔ 已預審：' + pre + (me ? '｜⏳ 等待御宇（周郁菁）確認（第二道）' : '｜請進行第二道確認'); }
+  return '<div style="background:#fffaf0;border:1px solid #f1dfb8;border-radius:8px;margin:8px 0;padding:10px">' +
+    '<div class="meta"><b>報備審核</b>' + (two ? '｜<span style="color:var(--amb)">兩道審核：鄧昌勝預審 → 御宇確認</span>' : '') + '</div>' +
+    (note ? '<div class="meta">' + esc(note) + '</div>' : '') +
+    (can ? '<textarea class="cr-comment" placeholder="審核意見（不受理時必填）" style="margin-top:6px"></textarea>' +
+      '<div class="row" style="margin-top:6px"><div><button class="btn sm" onclick="reviewCase(this, \'' + esc(c.id) + '\', \'approve\')">' + label + '</button></div>' +
+      '<div><button class="btn sm gray" onclick="reviewCase(this, \'' + esc(c.id) + '\', \'reject\')">不受理</button></div></div>' : '') +
+  '</div>';
+}
+async function reviewCase(btn, id, action) {
+  const ta = btn.closest('.card').querySelector('.cr-comment');
+  const comment = ta ? ta.value : '';
+  if (action === 'reject' && !comment.trim()) { alert('不受理請填寫原因'); return; }
+  if (!confirm(action === 'approve' ? '確定「' + btn.textContent + '」？' : '確定不受理這筆報備？')) return;
+  btn.disabled = true;
+  try {
+    const r = await api('adminCaseReview', { id: id, action: action, comment: comment });
+    alert(r.ok ? '✅ ' + r.message : r.message);
+    if (r.ok) loadAdminCases(adminFilter.agentId, adminFilter.status, adminFilter.deal);
+  } catch (e) { alert('連線失敗，請稍後再試'); }
+  finally { btn.disabled = false; }
 }
 function feePreview(sel) {
   const w = sel.closest('.edit');
