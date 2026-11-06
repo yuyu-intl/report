@@ -185,7 +185,8 @@
       <input name="orgName" required placeholder="例：○○大飯店、○○醫院、○○團膳">
       <label>統一編號 <span class="req">*</span></label>
       <input name="taxId" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" required placeholder="8 碼數字，報備後依縣市鎖定">
-      <div class="hint">不知道統編？可至 <a href="https://findbiz.nat.gov.tw/" target="_blank" rel="noopener">經濟部商工登記查詢</a> 以公司名稱查詢。</div>
+      <div class="warn" style="background:#fff4e0;color:#8a4b00">⚠ 統一編號必須填寫正確才能鎖定：系統以「統編＋縣市」鎖定客戶保護期，統編錯誤無法送出；若填成別家公司的統編，此客戶仍可被他人以正確統編報備，您的報備將不受保護。</div>
+      <div class="hint">不知道統編？可至 <a href="https://findbiz.nat.gov.tw/" target="_blank" rel="noopener">經濟部商工登記查詢</a> 以公司名稱查詢核對。</div>
       <div class="row">
         <div><label>客戶類型 <span class="req">*</span></label>
           <select name="orgType" required>
@@ -479,12 +480,21 @@ function setLocked(v) {
   btn.disabled = v;
   btn.textContent = v ? '此統編已鎖定，無法報備' : '送出報備';
 }
+// 統一編號檢查碼（財政部規則，含第 7 碼為 7 的特例）
+function taxOk(t) {
+  if (!/^\d{8}$/.test(t)) return false;
+  const w = [1, 2, 1, 2, 1, 2, 4, 1];
+  let s = 0;
+  for (let i = 0; i < 8; i++) { const p = Number(t[i]) * w[i]; s += Math.floor(p / 10) + p % 10; }
+  return s % 5 === 0 || (t[6] === '7' && (s + 1) % 5 === 0);
+}
 function runCheck() {
   clearTimeout(checkTimer);
   checkTimer = setTimeout(async () => {
     const box = $('#dupMsg');
     const tax = form.taxId.value.replace(/\D/g, '');
     const city = form.city.value;
+    if (tax.length === 8 && !taxOk(tax)) { box.className = 'warn no'; box.textContent = '⚠ 統一編號檢查碼不正確，請核對後再填（統編錯誤無法鎖定、無法送出）'; setLocked(false); return; }
     if ((tax.length !== 8 && !form.orgName.value.trim()) || !city) { box.classList.add('hidden'); setLocked(false); return; }
     try {
       const r = await api('check', { orgName: form.orgName.value, taxId: tax.length === 8 ? tax : '', city: city });
@@ -503,6 +513,7 @@ form.onsubmit = async e => {
   e.preventDefault();
   if (locked) { alert('此統編已被報備鎖定，無法重複報備'); return; }
   if (!/^\d{8}$/.test(form.taxId.value.trim())) { alert('請填寫 8 碼統一編號'); return; }
+  if (!taxOk(form.taxId.value.trim())) { alert('統一編號檢查碼不正確，請至經濟部商工登記查詢核對。統編必須正確才能鎖定保護期。'); return; }
   if (!$('#consent').checked) { alert('請勾選個資同意聲明'); return; }
   if (ME.central && !form.salesId.value) { alert('請選擇承辦業務'); return; }
   const data = Object.fromEntries(new FormData(form).entries());
