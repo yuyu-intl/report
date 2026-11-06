@@ -972,7 +972,7 @@ function editQuote(id) {
     '<div class="card"><h2>報價內容</h2><div id="qLines">' + lines.map(qLineHtml).join('') + '</div>' +
       '<div class="row" style="margin-top:10px"><div><select id="qModel">' + mo + '</select></div>' +
       '<div><button type="button" class="btn sm gray" onclick="qAdd(\'machine\')">＋設備</button></div>' +
-      '<div><button type="button" class="btn sm gray" onclick="qAdd(\'cons\')">＋年度耗材</button></div></div>' +
+      '<div><button type="button" class="btn sm gray" onclick="qAdd(\'cons\')">＋三年耗材</button></div></div>' +
       '<button type="button" class="btn sm gray" style="margin-top:6px" onclick="qAdd(\'other\')">＋其他項目（安裝、運送等）</button>' +
       '<div id="qTot" style="margin-top:10px"></div></div>' +
     '<div class="card"><label class="dl">備註（會印在報價單上）<textarea id="qNote">' + esc(q ? q.note : '') + '</textarea></label></div>' +
@@ -984,7 +984,7 @@ function editQuote(id) {
 function qAdd(kind) {
   const m = $('#qModel').value;
   const l = kind === 'machine' ? { kind: kind, model: m, name: '商用廚餘處理機 ' + m, spec: '含智能溫控與攪拌系統', unit: '台', qty: 1, price: QD.retail[m].machine }
-    : kind === 'cons' ? { kind: kind, model: m, name: '年度耗材（生物芯片＋酵素，' + m + ' 專用）', spec: '原廠指定，一年需求量', unit: '年', qty: 1, price: QD.retail[m].cons }
+    : kind === 'cons' ? { kind: kind, model: m, name: '三年耗材（生物芯片＋酵素，' + m + ' 專用）', spec: '原廠指定，3 年需求量，價格鎖定 3 年', unit: '組', qty: 1, price: QD.retail[m].cons }
     : { kind: 'other', model: '', name: '', spec: '', unit: '式', qty: 1, price: '' };
   $('#qLines').insertAdjacentHTML('beforeend', qLineHtml(l));
   qCalc();
