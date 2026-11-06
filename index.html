@@ -769,9 +769,10 @@ async function loadEvent() {
     } else h += '<div class="hint">您的帳號尚無經銷商編號，無法產生專屬連結。</div>';
     h += '</div>';
     const sum = list => list.reduce((s, x) => s + x.people, 0);
-    const rowsHtml = (list, showRef) => list.map(x => '<div class="pending"><b>' + esc(x.company) + '</b>｜' + esc(x.name) + (x.title ? ' ' + esc(x.title) : '') + '｜' + x.people + ' 位' +
-      '<div class="meta">' + esc(x.city) + '｜' + esc(x.industry) + '｜<a href="tel:' + esc(x.phone) + '">' + esc(x.phone) + '</a>｜' + esc(x.time) +
-      (showRef ? '｜推薦 ' + esc(x.refName ? x.refName + '（' + x.ref + '）' : '無') : '') + (x.line ? '｜LINE ✓' : '') + '</div></div>').join('');
+    const rowsHtml = (list, showRef) => list.map((x, k) => '<div class="pending"><b>' + esc(x.company) + '</b>｜' + esc(x.name) + (x.title ? ' ' + esc(x.title) : '') + '｜' + x.people + ' 位' +
+      '<div class="meta">' + esc(x.city) + '｜' + esc(x.industry) + '｜<a href="tel:' + esc(ph0(x.phone)) + '">' + esc(ph0(x.phone)) + '</a>｜' + esc(x.time) +
+      (showRef ? '｜推薦 ' + esc(x.refName ? x.refName + '（' + x.ref + '）' : '無') : '') + (x.line ? '｜LINE ✓' : '') + '</div>' +
+      (showRef ? '' : x.reported ? '<div class="meta">✅ 已報備（' + esc(x.reported) + '）</div>' : '<button class="btn sm" style="margin-top:6px" onclick="evToReport(' + k + ')">轉為報備</button>') + '</div>').join('');
     h += '<div class="card"><h2>透過我報名（' + r.list.length + ' 家／' + sum(r.list) + ' 位）</h2>' +
       (r.list.length ? rowsHtml(r.list, false) : '<div class="hint">尚無人透過您的連結報名。</div>') + '</div>';
     if (r.all) h += '<div class="card"><h2>全部報名（管理員）' + r.all.length + ' 家／' + sum(r.all) + ' 位</h2>' +
@@ -779,6 +780,28 @@ async function loadEvent() {
     box.innerHTML = h;
   } catch (err) { if (err.message !== 'relogin') box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
 }
+// 說明會報名 → 一鍵轉報備：帶入報備表，經銷商補統編等欄位後送出（照一般報備查重／審核）
+function evToReport(k) {
+  const x = evData.list[k], f = $('#form');
+  openTab('form');
+  if (!canReport() || !f) return;
+  const set = (n, v) => {
+    const el = f.elements[n]; if (!el || v == null || v === '') return;
+    if (el.tagName === 'SELECT') { const o = [...el.options].find(o => o.value === v || o.text === v); if (o) el.value = o.value; }
+    else el.value = v;
+  };
+  const phone = ph0(x.phone);
+  set('orgName', x.company); set('taxId', x.taxId); set('city', x.city);
+  set('orgType', { '宴會廳／婚宴會館': '餐廳／連鎖餐飲' }[x.industry] || x.industry);
+  set('wasteVolume', { '50 公斤以下': '100 公斤以下', '50–100 公斤': '100 公斤以下', '200–400 公斤': '200–500 公斤' }[x.waste] || x.waste);
+  set('currentMethod', { '已有處理設備': '自行處理／已有設備' }[x.method] || x.method);
+  set('contactName', x.name); set('contactTitle', x.title); set('contactPhone', phone);
+  setTimeout(() => {
+    alert('已帶入「' + x.company + '」的說明會報名資料。\n請確認並補齊' + (x.taxId ? '' : '「統一編號」與') + '其他欄位後送出報備（照一般報備查重、鎖定）。');
+    const t = f.elements.taxId; if (t && !t.value) t.focus();
+  }, 200);
+}
+function ph0(p) { const d = String(p || '').replace(/\D/g, ''); return /^9\d{8}$/.test(d) ? '0' + d : String(p || ''); }   // 試算表吃掉開頭 0 時補回
 function copyEv(k) {
   const url = evData[k];
   const done = () => alert('已複製報名連結');
