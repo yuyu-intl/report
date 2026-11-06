@@ -949,8 +949,9 @@ function renderQuotes() {
     '<div class="meta">' + (q.date ? '報價日期 ' + esc(q.date) + '｜' : '') + '建立 ' + esc(q.created) + '｜客戶 ' + esc(q.cust.name) + '</div>' +
     linesTable(q.lines) + quoteTotalsHtml(q) +
     (q.status === '已退回' && q.comment ? '<div class="alerts">退回原因：' + esc(q.comment) + '</div>' : q.comment ? '<div class="meta">御宇意見：' + esc(q.comment) + '</div>' : '') +
+    (q.status === '已核准' && !q.sealed && !q.sealOld ? '<div class="alerts">✅ 已核准，御宇用印中；用印完成後會以 LINE 通知您下載正式報價單。</div>' : q.sealed ? '<div class="meta">✅ 已用印 ' + esc(q.sealedAt) + '</div>' : '') +
     '<div class="row" style="margin-top:8px">' +
-      (q.status === '已核准' ? '<div><button class="btn sm" onclick="quotePdf(\'' + esc(q.id) + '\')">下載 PDF</button></div>' +
+      (q.status === '已核准' && (q.sealed || q.sealOld) ? '<div><button class="btn sm" onclick="quotePdf(\'' + esc(q.id) + '\')">下載 PDF</button></div>' +
                               '<div><button class="btn sm gray" onclick="quoteShare(\'' + esc(q.id) + '\')">用 LINE 傳送</button></div>' : '') +
       (q.status === '已退回' ? '<div><button class="btn sm" onclick="editQuote(\'' + esc(q.id) + '\')">修改</button></div>' +
                               '<div><button class="btn sm gray" onclick="cancelQuote(\'' + esc(q.id) + '\')">作廢</button></div>' : '') +
@@ -1195,11 +1196,11 @@ async function loadAdminQuotes(status) {
     const r = await api('adminQuotes', { status: AQ.status });
     if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
     AQ.list = r.quotes;
-    const sts = ['待審核', '待預審', '已核准', '已退回', '作廢', ''];
+    const sts = ['待審核', '待預審', '待用印', '已核准', '已退回', '作廢', ''];
     let h = '<button class="back" onclick="loadAdmin()">‹ 返回經銷商列表</button>' +
       '<div class="card"><h2>報價單審核（' + r.quotes.length + '）</h2><div class="filters">' +
       sts.map(s => '<button class="' + (s === AQ.status ? 'on' : '') + '" onclick="loadAdminQuotes(\'' + s + '\')">' + (s || '全部') + '</button>').join('') + '</div>' +
-      '<div class="hint">御宇只做審核（核准或退回），不能修改報價內容；需要調整請退回，由經銷商修改後重送。核准後給正式編號（報價日期＋A＋流水號）、產生 PDF，案件自動推進到「報價」並延長保護期。「待審核」含待預審。包羅的報價單需兩道審核：鄧昌勝預審 → 御宇（周郁菁）核准。</div></div>';
+      '<div class="hint">御宇只做審核（核准或退回），不能修改報價內容；需要調整請退回，由經銷商修改後重送。核准後給正式編號（報價日期＋A＋流水號）、產生 PDF 並寄到御宇信箱待用印，案件自動推進到「報價」並延長保護期；用印後在「待用印」上傳用印版，系統才通知經銷商下載。「待審核」含待預審。包羅的報價單需兩道審核：鄧昌勝預審 → 御宇（周郁菁）核准。</div></div>';
     if (!r.quotes.length) h += '<div class="center">沒有符合的報價單</div>';
     h += r.quotes.map((q, i) => {
       const pend = q.status === '待審核' || q.status === '待預審';
@@ -1223,7 +1224,12 @@ async function loadAdminQuotes(status) {
         (edit ? '<textarea class="aq-comment" placeholder="審核意見（退回時必填）" style="margin-top:8px"></textarea>' +
           '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="reviewQuote(' + i + ', \'approve\')">' + (q.status === '待預審' ? '預審通過（送御宇核准）' : '核准並產生報價單') + '</button></div>' +
           '<div><button class="btn sm gray" onclick="reviewQuote(' + i + ', \'reject\')">退回</button></div></div>' : '') +
-        (q.status === '已核准' ? '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="quotePdf(\'' + esc(q.id) + '\')">下載 PDF</button></div>' +
+        (q.status === '已核准' ? '<div class="meta" style="margin-top:6px">' + (q.sealed ? '✅ 已上傳用印版 ' + esc(q.sealedAt) + (q.sealedBy ? '（' + esc(q.sealedBy) + '）' : '')
+            : q.sealOld ? '舊單（用印流程上線前核准），經銷商可直接下載' : '<b style="color:var(--amb)">⏳ 待用印</b>：PDF 已寄到御宇信箱，用印後掃描或拍照上傳，經銷商才能下載') + '</div>' +
+          '<input type="file" accept="application/pdf,image/*" id="seal_' + i + '" style="display:none" onchange="sealQuote(' + i + ', this)">' +
+          '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="$(\'#seal_' + i + '\').click()">' + (q.sealed ? '重新上傳用印版' : '上傳用印版') + '</button></div>' +
+          '<div><button class="btn sm gray" onclick="quotePdfRaw(\'' + esc(q.id) + '\')">原始 PDF</button></div></div>' +
+          '<div class="row" style="margin-top:8px">' + (q.sealed ? '<div><button class="btn sm gray" onclick="openUrl(\'' + esc(q.sealed) + '\')">用印版</button></div>' : '') +
           '<div><button class="btn sm gray" onclick="cancelQuote(\'' + esc(q.id) + '\', () => loadAdminQuotes())">作廢</button></div></div>' : '') +
       '</div>';
     }).join('');
@@ -1235,7 +1241,7 @@ async function reviewQuote(i, action) {
   const card = document.querySelector('#admin .card[data-i="' + i + '"]');
   const comment = card.querySelector('.aq-comment').value;
   if (action === 'reject' && !comment.trim()) { alert('退回請填寫原因'); return; }
-  if (!confirm(action === 'approve' ? (q.status === '待預審' ? '確定預審通過「' + q.cust.name + '」的報價單？通過後送御宇（周郁菁）進行第二道核准。' : '確定核准「' + q.cust.name + '」的報價單？核准後會給正式編號並產生 PDF。') : '確定退回這張報價單？')) return;
+  if (!confirm(action === 'approve' ? (q.status === '待預審' ? '確定預審通過「' + q.cust.name + '」的報價單？通過後送御宇（周郁菁）進行第二道核准。' : '確定核准「' + q.cust.name + '」的報價單？核准後會給正式編號、產生 PDF 並寄到御宇信箱待用印。') : '確定退回這張報價單？')) return;
   const btns = card.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
   try {
     const r = await api('adminQuoteReview', { id: q.id, action: action, comment: comment });
@@ -1243,6 +1249,24 @@ async function reviewQuote(i, action) {
     else alert(r.ok ? '✅ ' + r.message : r.message);
     loadAdminQuotes();
   } catch (e) { alert('連線失敗，請稍後再試'); btns.forEach(b => b.disabled = false); }
+}
+
+async function sealQuote(i, inp) {
+  const q = AQ.list[i], f = inp.files && inp.files[0];
+  inp.value = '';
+  if (!f) return;
+  if (!confirm('上傳「' + f.name + '」作為「' + q.cust.name + '」報價單（' + q.no + '）的用印版？上傳後會通知經銷商下載。')) return;
+  try {
+    const file = await readFile(f);
+    const r = await api('quoteSeal', { id: q.id, file: file });
+    alert(r.ok ? '✅ ' + r.message : r.message);
+    if (r.ok) loadAdminQuotes();
+  } catch (e) { alert('上傳失敗：' + (e.message || e)); }
+}
+async function quotePdfRaw(id) {
+  const r = await api('quotePdf', { id: id, raw: true });
+  if (!r.ok) { alert(r.message); return; }
+  openUrl(r.url);
 }
 
 /* ===== 管理後台（僅御宇管理員） ===== */
