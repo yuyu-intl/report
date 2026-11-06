@@ -917,7 +917,7 @@ async function exportBonus() {
 let QD = null, QE = null;
 const quotable = st => ['重複(未受理)', '已釋出', '無效'].indexOf(st) < 0;
 const nt = n => 'NT$ ' + (Math.round(n) || 0).toLocaleString();
-const Q_BADGE = { '待審核': '⏳ 待御宇審核', '已退回': '↩ 已退回', '已核准': '✅ 已核准', '作廢': '作廢' };
+const Q_BADGE = { '待預審': '⏳ 待預審（第一道）', '待審核': '⏳ 待御宇審核', '已退回': '↩ 已退回', '已核准': '✅ 已核准', '作廢': '作廢' };
 async function openQuote(caseId, back) {
   show('quote');
   const box = $('#quote');
@@ -957,7 +957,7 @@ function renderQuotes() {
     '<div class="row" style="margin-top:8px">' +
       (q.status === '已核准' ? '<div><button class="btn sm" onclick="quotePdf(\'' + esc(q.id) + '\')">下載 PDF</button></div>' +
                               '<div><button class="btn sm gray" onclick="quoteShare(\'' + esc(q.id) + '\')">用 LINE 傳送</button></div>' : '') +
-      (q.status === '待審核' || q.status === '已退回' ? '<div><button class="btn sm" onclick="editQuote(\'' + esc(q.id) + '\')">修改</button></div>' +
+      (q.status === '待預審' || q.status === '待審核' || q.status === '已退回' ? '<div><button class="btn sm" onclick="editQuote(\'' + esc(q.id) + '\')">修改</button></div>' +
                               '<div><button class="btn sm gray" onclick="cancelQuote(\'' + esc(q.id) + '\')">作廢</button></div>' : '') +
     '</div></div>').join('');
   box.innerHTML = h;
@@ -1175,19 +1175,22 @@ async function loadAdminQuotes(status) {
     const r = await api('adminQuotes', { status: AQ.status });
     if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
     AQ.list = r.quotes;
-    const sts = ['待審核', '已核准', '已退回', '作廢', ''];
+    const sts = ['待審核', '待預審', '已核准', '已退回', '作廢', ''];
     let h = '<button class="back" onclick="loadAdmin()">‹ 返回經銷商列表</button>' +
       '<div class="card"><h2>報價單審核（' + r.quotes.length + '）</h2><div class="filters">' +
       sts.map(s => '<button class="' + (s === AQ.status ? 'on' : '') + '" onclick="loadAdminQuotes(\'' + s + '\')">' + (s || '全部') + '</button>').join('') + '</div>' +
-      '<div class="hint">可直接調整數量與單價後核准。核准後給正式編號（報價日期＋A＋流水號）、產生 PDF，案件自動推進到「報價」並延長保護期。</div></div>';
+      '<div class="hint">可直接調整數量與單價後核准。核准後給正式編號（報價日期＋A＋流水號）、產生 PDF，案件自動推進到「報價」並延長保護期。「待審核」含待預審。包羅的報價單需兩道審核：鄧昌勝預審 → 御宇（周郁菁）核准。</div></div>';
     if (!r.quotes.length) h += '<div class="center">沒有符合的報價單</div>';
     h += r.quotes.map((q, i) => {
-      const edit = q.status === '待審核';
+      const pend = q.status === '待審核' || q.status === '待預審';
+      const edit = pend && q.canAct !== false;
+      const wait = pend && !edit ? (q.status === '待預審' ? '⏳ 等待' + esc(q.reviewerName || '預審人') + '預審（第一道）' : '⏳ 已完成預審，等待御宇（周郁菁）核准（第二道）') : '';
       return '<div class="card case" data-i="' + i + '">' +
         '<div class="top"><b>' + esc(q.cust.name) + '</b><span class="badge">' + esc(Q_BADGE[q.status] || q.status) + '</span></div>' +
         '<div class="meta">' + (q.no ? '編號 ' + esc(q.no) + '｜' : '') + esc(q.id) + '｜案件 ' + esc(q.caseId) + '<br>' +
           '經銷商：' + esc(q.company) + '（' + (esc(q.level) || '—') + '）｜承辦 ' + esc(q.handler) + (q.handlerPhone ? ' ' + esc(q.handlerPhone) : '') + '<br>' +
-          '建立 ' + esc(q.created) + (q.reviewed ? '｜審核 ' + esc(q.reviewed) + ' ' + esc(q.reviewer) : '') + '</div>' +
+          '建立 ' + esc(q.created) + (q.pre && q.pre.at ? '｜預審 ' + esc(q.pre.at) + ' ' + esc(q.pre.by) : '') + (q.reviewed ? '｜審核 ' + esc(q.reviewed) + ' ' + esc(q.reviewer) : '') +
+          (q.twoStep ? '<br><span style="color:var(--amb)">兩道審核：' + esc(q.reviewerName || '鄧昌勝') + ' 預審 → 御宇核准</span>' : '') + '</div>' +
         '<details class="detail"><summary>客戶資料</summary><div>統編 ' + (esc(q.cust.taxId) || '—') + '｜聯繫人 ' + (esc(q.cust.contact) || '—') +
           '｜電話 ' + (esc(q.cust.phone) || '—') + '<br>地址 ' + (esc(q.cust.address) || '—') + '｜E-mail ' + (esc(q.cust.email) || '—') + '</div></details>' +
         (edit ? '<table class="mt"><tr><th>品項</th><th>數量</th><th>未稅單價</th></tr>' + q.lines.map((l, k) =>
@@ -1197,9 +1200,11 @@ async function loadAdminQuotes(status) {
           : linesTable(q.lines)) +
         quoteTotalsHtml(q) +
         (q.note ? '<div class="meta">備註：' + esc(q.note) + '</div>' : '') +
+        (q.pre && q.pre.comment ? '<div class="meta">預審意見：' + esc(q.pre.comment) + '</div>' : '') +
         (q.comment ? '<div class="meta">審核意見：' + esc(q.comment) + '</div>' : '') +
+        (wait ? '<div class="alerts">' + wait + '</div>' : '') +
         (edit ? '<textarea class="aq-comment" placeholder="審核意見（退回時必填）" style="margin-top:8px"></textarea>' +
-          '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="reviewQuote(' + i + ', \'approve\')">核准並產生報價單</button></div>' +
+          '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="reviewQuote(' + i + ', \'approve\')">' + (q.status === '待預審' ? '預審通過（送御宇核准）' : '核准並產生報價單') + '</button></div>' +
           '<div><button class="btn sm gray" onclick="reviewQuote(' + i + ', \'reject\')">退回</button></div></div>' : '') +
         (q.status === '已核准' ? '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="quotePdf(\'' + esc(q.id) + '\')">下載 PDF</button></div>' +
           '<div><button class="btn sm gray" onclick="cancelQuote(\'' + esc(q.id) + '\', () => loadAdminQuotes())">作廢</button></div></div>' : '') +
@@ -1215,7 +1220,7 @@ async function reviewQuote(i, action) {
   if (action === 'reject' && !comment.trim()) { alert('退回請填寫原因'); return; }
   const lines = q.lines.map((l, k) => Object.assign({}, l, { qty: card.querySelector('.aq-qty[data-k="' + k + '"]').value,
     price: card.querySelector('.aq-price[data-k="' + k + '"]').value.replace(/[,\s]/g, '') }));
-  if (!confirm(action === 'approve' ? '確定核准「' + q.cust.name + '」的報價單？核准後會給正式編號並產生 PDF。' : '確定退回這張報價單？')) return;
+  if (!confirm(action === 'approve' ? (q.status === '待預審' ? '確定預審通過「' + q.cust.name + '」的報價單？通過後送御宇（周郁菁）進行第二道核准。' : '確定核准「' + q.cust.name + '」的報價單？核准後會給正式編號並產生 PDF。') : '確定退回這張報價單？')) return;
   const btns = card.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
   try {
     const r = await api('adminQuoteReview', { id: q.id, action: action, comment: comment, lines: action === 'approve' ? lines : null });
