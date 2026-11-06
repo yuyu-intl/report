@@ -1270,7 +1270,7 @@ async function loadAdmin() {
       const i = adminAgents.indexOf(a);
       return '<div class="card agent" onclick="loadAdminCases(adminAgents[' + i + '].id)">' +
         '<div class="top"><b>' + esc(a.company || a.name) + ' <small>' + esc(a.name) + '</small></b>' +
-          '<span class="badge">' + (a.isAdmin ? '管理員・' : '') + (esc(a.level) || '未設級別') + (a.central ? '・集中報備' : '') + (a.status === '停用' ? '・停用' : '') + '</span></div>' +
+          '<span class="badge">' + (a.isAdmin ? '管理員・' : a.isViewer ? '唯讀管理・' : '') + (esc(a.level) || '未設級別') + (a.central ? '・集中報備' : '') + (a.status === '停用' ? '・停用' : '') + '</span></div>' +
         '<div class="stats"><div><b>' + a.total + '</b>報備</div><div><b>' + a.pending + '</b>待確認</div>' +
           '<div><b>' + a.won + '</b>成交</div><div><b>' + a.halfWon + '</b>本半年</div></div>' +
         '<div class="meta">' + esc(a.code || '') + '｜' + (a.upline ? '上線 ' + esc(a.uplineName) : a.level === 'A級' ? '直屬御宇' : '直屬御宇（無上線）') + '<br>' +
@@ -1282,7 +1282,8 @@ async function loadAdmin() {
         (!a.builtinAdmin ? '<div onclick="event.stopPropagation()" style="margin-top:6px"><select onchange="setAgent(' + i + ', {upline:this.value})">' +
           '<option value="">上線：直屬御宇</option>' + leaders(a.id).map(x => '<option value="' + esc(x.id) + '"' + (x.id === a.upline ? ' selected' : '') + '>上線：' + esc(x.company || x.name) + '</option>').join('') +
           '</select></div>' : '') +
-        (a.builtinAdmin ? '' : '<div onclick="event.stopPropagation()" style="margin-top:6px"><button class="btn sm gray" onclick="toggleAdmin(' + i + ')">' + (a.isAdmin ? '取消管理員權限' : '設為御宇管理員') + '</button></div>') +
+        '<div onclick="event.stopPropagation()" class="row" style="margin-top:6px"><div><button class="btn sm gray" onclick="toggleAdmin(' + i + ')">' + (a.isAdmin ? '取消管理員' : '設為管理員') + '</button></div>' +
+          '<div><button class="btn sm gray" onclick="toggleViewer(' + i + ')">' + (a.isViewer ? '取消唯讀管理' : '設為唯讀管理') + '</button></div></div>' +
         (a.level === 'A級' && !a.builtinAdmin ? '<div onclick="event.stopPropagation()" style="margin-top:6px"><button class="btn sm gray" onclick="toggleCentral(' + i + ')">' + (a.central ? '集中報備：已開啟（點此關閉）' : '開啟集中報備') + '</button></div>' : '') +
       '</div>';
     }).join('');
@@ -1323,6 +1324,25 @@ function toggleAdmin(i) {
   const a = adminAgents[i];
   if (!confirm(a.isAdmin ? '確定取消「' + (a.name || a.company) + '」的管理員權限？' : '確定將「' + (a.name || a.company) + '」設為御宇管理員？管理員可審核所有經銷商、修改案件與發放紀錄。')) return;
   setAgent(i, { admin: !a.isAdmin });
+}
+function toggleViewer(i) {
+  const a = adminAgents[i];
+  if (!confirm(a.isViewer ? '確定取消「' + (a.name || a.company) + '」的唯讀管理權限？' : '確定將「' + (a.name || a.company) + '」設為唯讀管理？可查看全部經銷商、案件、報價單與月結報表，但不能修改、核准或發放' + (a.isAdmin ? '；原本的管理員權限會一併取消' : '') + '。')) return;
+  setAgent(i, { viewer: !a.isViewer });
+}
+// 唯讀管理：管理後台只保留查看，移除修改與核准按鈕（後端同樣會擋）
+function viewerMode() {
+  const W = /setAgent|approveAgent|toggleAdmin|toggleViewer|toggleCentral|saveCase|markPaid|exportMonthly|cancelQuote|editQuote|saveSales|markBonus|setReturn/;
+  const box = $('#admin');
+  const mo = new MutationObserver(() => {
+    mo.disconnect();
+    box.querySelectorAll('.edit').forEach(e => e.remove());
+    box.querySelectorAll('button, select').forEach(b => { if (W.test((b.getAttribute('onclick') || '') + (b.getAttribute('onchange') || ''))) b.remove(); });
+    if (!box.querySelector('.viewer-note') && !box.querySelector('.center'))
+      box.insertAdjacentHTML('afterbegin', '<div class="alerts viewer-note">👁 唯讀管理：可查看全部資料；修改、核准與發放由御宇管理員處理' + (ME.isPreReviewer ? '。包羅的第一道預審仍由您處理。' : '。') + '</div>');
+    mo.observe(box, { childList: true, subtree: true });
+  });
+  mo.observe(box, { childList: true, subtree: true });
 }
 function approveAgent(i) { setAgent(i, { level: $('#lv' + i).value, status: '已核准' }); }
 function toggleCentral(i) {
@@ -1392,9 +1412,9 @@ function caseCard(c) {
 // 報備審核：一般案件確認一次；兩道審核（包羅）先鄧昌勝預審，再御宇（周郁菁）確認
 function reviewBox(c) {
   const two = c.twoStep, pre = c.preReview, me = ME.isPreReviewer;
-  let label = '確認報備（有效）', can = true, note = '';
+  let label = '確認報備（有效）', can = !!ME.isAdmin, note = '';
   if (two && !pre) { label = '預審通過（送御宇確認）'; can = !!me; note = me ? '本案需兩道審核，請先預審（第一道）。' : '⏳ 等待鄧昌勝預審（第一道）'; }
-  else if (two) { can = !me; note = '✔ 已預審：' + pre + (me ? '｜⏳ 等待御宇（周郁菁）確認（第二道）' : '｜請進行第二道確認'); }
+  else if (two) { can = !me && !!ME.isAdmin; note = '✔ 已預審：' + pre + (me ? '｜⏳ 等待御宇（周郁菁）確認（第二道）' : '｜請進行第二道確認'); }
   return '<div style="background:#fffaf0;border:1px solid #f1dfb8;border-radius:8px;margin:8px 0;padding:10px">' +
     '<div class="meta"><b>報備審核</b>' + (two ? '｜<span style="color:var(--amb)">兩道審核：鄧昌勝預審 → 御宇確認</span>' : '') + '</div>' +
     (note ? '<div class="meta">' + esc(note) + '</div>' : '') +
@@ -1522,7 +1542,8 @@ async function markPaid(agentId) {
     const a = r.agent;
     $('#hello').textContent = '您好，' + (a ? (a.name || r.lineName) + (a.company ? '｜' + a.company : '') : r.lineName);
     $('#tabs').classList.remove('hidden');
-    if (r.isAdmin) $('#adminTab').classList.remove('hidden');
+    if (r.isAdmin || r.isViewer) $('#adminTab').classList.remove('hidden');
+    if (r.isViewer) viewerMode();
     if (r.adminGranted) alert('✅ 您已成為御宇國際報備系統的管理員，可使用「管理後台」。');
     if (r.isLeader) $('#teamTab').classList.remove('hidden');
     if (r.isAdmin || (a && a.code && a.status === '已核准')) $('#eventTab').classList.remove('hidden');
@@ -1535,7 +1556,7 @@ async function markPaid(agentId) {
       else if (r.setup) { showReg(); return; }
     }
     if (!canReport() && !['svc', 'calc'].includes(tab)) { showReg(); return; }
-    openTab(['list', 'svc', 'calc'].includes(tab) || (tab === 'admin' && r.isAdmin) || (tab === 'team' && r.isLeader) || (tab === 'event' && !$('#eventTab').classList.contains('hidden')) || (tab === 'bonus' && canBonus) ? tab : 'form');
+    openTab(['list', 'svc', 'calc'].includes(tab) || (tab === 'admin' && (r.isAdmin || r.isViewer)) || (tab === 'team' && r.isLeader) || (tab === 'event' && !$('#eventTab').classList.contains('hidden')) || (tab === 'bonus' && canBonus) ? tab : 'form');
   } catch (e) {
     if (e.message !== 'relogin') $('#loading').textContent = '初始化失敗：' + e.message + '（請關閉後重新開啟）';
   }
