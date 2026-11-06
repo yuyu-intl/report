@@ -969,11 +969,13 @@ function editQuote(id) {
       '<div class="edit">' + f('name', '客戶名稱 *', c.name) + f('taxId', '客戶統一編號', c.taxId, ' inputmode="numeric" maxlength="8"') +
       f('contact', '客戶聯繫人', c.contact) + f('phone', '客戶電話', c.phone, ' inputmode="tel"') + '</div>' +
       f('address', '客戶地址', c.address) + f('email', '客戶 E-mail', c.email, ' inputmode="email"') + '</div>' +
-    '<div class="card"><h2>報價內容</h2><div id="qLines">' + lines.map(qLineHtml).join('') + '</div>' +
-      '<div class="row" style="margin-top:10px"><div><select id="qModel">' + mo + '</select></div>' +
-      '<div><button type="button" class="btn sm gray" onclick="qAdd(\'machine\')">＋設備</button></div>' +
-      '<div><button type="button" class="btn sm gray" onclick="qAdd(\'cons\')">＋三年耗材</button></div></div>' +
-      '<button type="button" class="btn sm gray" style="margin-top:6px" onclick="qAdd(\'other\')">＋其他項目（安裝、運送等）</button>' +
+    '<div class="card"><h2>報價內容</h2><label class="dl">機型<select id="qModel" onchange="qModel()">' + mo + '</select></label>' +
+      '<div id="qLines">' + lines.map(qLineHtml).join('') + '</div>' +
+      '<div class="row" id="qAddRow" style="margin-top:10px">' +
+      '<div id="qAddM"><button type="button" class="btn sm gray" onclick="qAdd(\'machine\')">＋設備</button></div>' +
+      '<div id="qAddC"><button type="button" class="btn sm gray" onclick="qAdd(\'cons\')">＋三年耗材</button></div>' +
+      '<div><button type="button" class="btn sm gray" onclick="qAdd(\'other\')">＋其他項目</button></div></div>' +
+      '<div class="hint">設備與三年耗材各一行，台數請改「數量」；換機型會一併更新品名與建議售價。其他項目可加安裝、運送等。</div>' +
       '<div id="qTot" style="margin-top:10px"></div></div>' +
     '<div class="card"><label class="dl">備註（會印在報價單上）<textarea id="qNote">' + esc(q ? q.note : '') + '</textarea></label></div>' +
     '<button class="btn" id="qSubmit" onclick="submitQuote()">送出給御宇審核</button>';
@@ -981,8 +983,26 @@ function editQuote(id) {
   qCalc();
   window.scrollTo(0, 0);
 }
+function qHas(kind) { return document.querySelector('#qLines .qline[data-kind="' + kind + '"]'); }
+function qSync() {
+  const a = $('#qAddM'), b = $('#qAddC');
+  if (a) a.style.display = qHas('machine') ? 'none' : '';
+  if (b) b.style.display = qHas('cons') ? 'none' : '';
+}
+function qModel() {
+  const m = $('#qModel').value, R = QD.retail[m] || {};
+  document.querySelectorAll('#qLines .qline').forEach(w => {
+    const k = w.dataset.kind; if (k !== 'machine' && k !== 'cons') return;
+    w.dataset.model = m; w.dataset.retail = R[k] || 0;
+    w.querySelector('.ql-name').value = k === 'machine' ? '商用廚餘處理機 ' + m : '三年耗材（生物芯片＋酵素，' + m + ' 專用）';
+    w.querySelector('.ql-price').value = R[k] || '';
+  });
+  qCalc();
+}
 function qAdd(kind) {
   const m = $('#qModel').value;
+  const ex = kind !== 'other' && qHas(kind);
+  if (ex) { const n = ex.querySelector('.ql-qty'); n.focus(); n.select(); return; }
   const l = kind === 'machine' ? { kind: kind, model: m, name: '商用廚餘處理機 ' + m, spec: '含智能溫控與攪拌系統', unit: '台', qty: 1, price: QD.retail[m].machine }
     : kind === 'cons' ? { kind: kind, model: m, name: '三年耗材（生物芯片＋酵素，' + m + ' 專用）', spec: '原廠指定，3 年需求量，價格鎖定 3 年', unit: '組', qty: 1, price: QD.retail[m].cons }
     : { kind: 'other', model: '', name: '', spec: '', unit: '式', qty: 1, price: '' };
@@ -1005,6 +1025,7 @@ function qCalc() {
     w.querySelector('.ql-note').innerHTML = (r ? '建議售價 ' + r.toLocaleString() + ' 元' : '其他項目') + '｜小計 ' + nt(qty * price) +
       (d ? '｜<span style="color:var(--amb)">折讓 ' + nt(d) + '</span>' : '');
   });
+  qSync();
   const tax = Math.round(sub * 0.05);
   const t = $('#qTot'); if (t) t.innerHTML = quoteTotalsHtml({ sub: sub, tax: tax, total: sub + tax, discount: disc });
 }
