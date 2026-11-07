@@ -296,6 +296,14 @@
       <div class="hint">參考：台中市一般事業廢棄物（廚餘）115 年代清除＋代處理公定費率每噸 4,340 元（約每公斤 4.34 元）；民間清運報價常高於此。</div>
       <div class="row" style="margin-top:10px"><div><button class="btn sm gray" id="cCopy">複製試算結果</button></div><div><button class="btn sm gray" id="cClear">清除</button></div></div>
     </div>
+    <div class="card">
+      <h2>三年分期方案</h2>
+      <div class="hint">零頭期、36 期、年利率 3%，含稅、含三年耗材；BM-50 每月 21,161 元起。</div>
+      <div class="row" style="margin-top:10px">
+        <div><a class="btn sm" id="loanOpen" href="https://yuyu-intl.github.io/report/loan.html">查看分期方案</a></div>
+        <div><button class="btn sm gray" id="loanCopy">複製連結給客戶</button></div>
+      </div>
+    </div>
   </div>
   <div id="svc" class="hidden">
     <div class="notice">目前開放報備：<b>BM 廚餘處理機</b>。其他產品歡迎洽詢，報備功能將陸續開放。</div>
@@ -742,6 +750,12 @@ $('#cCopy').onclick = () => {
   if (!calcText) { alert('請先輸入日處理量'); return; }
   if (navigator.clipboard) navigator.clipboard.writeText(calcText).then(() => alert('已複製，可貼到 LINE 給客戶'), () => prompt('請長按複製', calcText));
   else prompt('請長按複製', calcText);
+};
+const LOAN_URL = 'https://yuyu-intl.github.io/report/loan.html';
+$('#loanCopy').onclick = () => {
+  const t = 'BM 系列廚餘機 三年分期方案（零頭期、36 期、年利率 3%，含稅含三年耗材）\n' + LOAN_URL;
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => alert('已複製，可貼到 LINE 給客戶'), () => prompt('請長按複製', t));
+  else prompt('請長按複製', t);
 };
 
 /* ===== 說明會：我的專屬報名連結＋透過我報名的名單 ===== */
