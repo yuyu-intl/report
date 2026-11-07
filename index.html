@@ -1300,6 +1300,15 @@ async function quotePdfRaw(id) {
 
 /* ===== 管理後台（僅御宇管理員） ===== */
 let adminAgents = [];
+// 管理後台分頁顯示待處理數量（報備審核＋報價單審核＋待用印），登入後背景讀取
+async function adminBadge() {
+  try {
+    const r = await api('adminOverview');
+    if (!r.ok) return;
+    const n = r.agents.reduce((k, a) => k + (a.pending || 0), 0) + ((r.quoteCounts || {}).mine || 0) + ((r.quoteCounts || {}).seal || 0);
+    $('#adminTab').textContent = '管理後台' + (n ? '（' + n + '）' : '');
+  } catch (e) {}
+}
 async function loadAdmin() {
   show('admin');
   const box = $('#admin');
@@ -1310,15 +1319,20 @@ async function loadAdmin() {
     adminAgents = r.agents;
     const sum = k => r.agents.reduce((n, a) => n + (a[k] || 0), 0);
     const waiting = r.agents.filter(a => a.status === '待審核');
+    const qc = r.quoteCounts || { mine: 0, seal: 0 };
     let h = '<div class="card"><h2>總覽</h2><div class="stats">' +
       '<div><b>' + r.agents.filter(a => a.status === '已核准').length + '</b>經銷商</div><div><b>' + sum('total') + '</b>報備</div>' +
-      '<div><b>' + sum('pending') + '</b>待確認</div><div><b>' + sum('halfWon') + '</b>本半年成交</div></div>' +
-      '<div class="row" style="margin-top:10px"><div><button class="btn sm" onclick="loadAdminCases(\'\', \'待確認\')">全部待確認</button></div>' +
+      '<div><b' + (sum('pending') ? ' style="color:var(--red)"' : '') + '>' + sum('pending') + '</b>待確認報備</div><div><b>' + sum('halfWon') + '</b>本半年成交</div></div>' +
+      (qc.mine || qc.seal || sum('pending') ? '<div class="alerts" style="margin-top:8px">🔔 待處理：' + [sum('pending') ? '報備審核 ' + sum('pending') + ' 件' : '', qc.mine ? '報價單審核 ' + qc.mine + ' 件' : '', qc.seal ? '報價單待用印 ' + qc.seal + ' 件' : ''].filter(Boolean).join('、') + '</div>' : '') +
+      '<div class="row" style="margin-top:10px"><div><button class="btn sm" onclick="loadAdminCases(\'\', \'待確認\')">報備審核' + (sum('pending') ? '（' + sum('pending') + '）' : '') + '</button></div>' +
       '<div><button class="btn sm" onclick="loadAdminCases(\'\', \'\', 1)">成交進度追蹤</button></div></div>' +
       '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadMonthly()">月結差價報表</button></div>' +
       '<div><button class="btn sm" onclick="loadTree()">經銷架構</button></div></div>' +
       '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadAdminProgress()">進度回報紀錄</button></div>' +
-      '<div><button class="btn sm" onclick="loadAdminQuotes(\'待審核\')">報價單審核</button></div></div></div>';
+      '<div><button class="btn sm" onclick="loadAdminQuotes(\'待審核\')">報價單審核' + (qc.mine ? '（' + qc.mine + '）' : '') + '</button></div></div>' +
+      (qc.seal ? '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadAdminQuotes(\'待用印\')">報價單待用印（' + qc.seal + '）</button></div></div>' : '') + '</div>';
+    const adm = $('#adminTab');
+    if (adm) adm.textContent = '管理後台' + (sum('pending') + qc.mine + qc.seal ? '（' + (sum('pending') + qc.mine + qc.seal) + '）' : '');
     if (waiting.length) {
       h += '<div class="card"><h2>待審核經銷商（' + waiting.length + '）</h2>' + waiting.map(a => {
         const i = adminAgents.indexOf(a);
@@ -1611,7 +1625,7 @@ async function markPaid(agentId) {
     const a = r.agent;
     $('#hello').textContent = '您好，' + (a ? (a.name || r.lineName) + (a.company ? '｜' + a.company : '') : r.lineName);
     $('#tabs').classList.remove('hidden');
-    if (r.isAdmin || r.isViewer) $('#adminTab').classList.remove('hidden');
+    if (r.isAdmin || r.isViewer) { $('#adminTab').classList.remove('hidden'); if (r.isAdmin) adminBadge(); }
     if (r.isViewer) viewerMode();
     if (r.adminGranted) alert('✅ 您已成為御宇國際報備系統的管理員，可使用「管理後台」。');
     if (r.isLeader) $('#teamTab').classList.remove('hidden');
