@@ -65,14 +65,14 @@
 
 <section class="card">
   <h2>月付與每月清運費比較</h2>
-  <p class="lead">清運費漲到每公斤 8 元時，BM-199、BM-400 的清運費已高於月付。單位：萬元／月</p>
+  <p class="lead">清運費每公斤 5.6 元時，BM-199、BM-400 的清運費已高於月付；漲到 8 元時 BM-99 也是。單位：萬元／月</p>
   <div class="legend">
     <span><i style="background:var(--blue)"></i>每月繳款</span>
     <span><i style="background:var(--grey-soft)"></i>清運費 5.6 元/kg</span>
     <span><i style="background:var(--grey)"></i>清運費 8 元/kg</span>
   </div>
   <div id="chart"></div>
-  <p class="note">清運費以參考日處理量計：BM-50 50 kg、BM-99 80 kg、BM-199 150 kg、BM-400 300 kg，每月 30 天。實際請以貴單位廚餘量與清運報價試算。</p>
+  <p class="note">清運費以參考日處理量計：BM-50 75 kg、BM-99 150 kg、BM-199 300 kg、BM-400 600 kg，每月 30 天。實際請以貴單位廚餘量與清運報價試算。</p>
 </section>
 
 <section class="card">
@@ -120,10 +120,10 @@
 <script>
 var R = 0.03/12, N = 36, TAX = 0.05;
 var data = [
-  {m:'BM-50',  use:'日處理約 30–80 kg',  dev:618000,  con:75000,  kg:50},
-  {m:'BM-99',  use:'日處理約 80 kg',     dev:808000,  con:90000,  kg:80},
-  {m:'BM-199', use:'日處理約 150 kg',    dev:988000,  con:120000, kg:150},
-  {m:'BM-400', use:'日處理約 300 kg',    dev:1670000, con:180000, kg:300}
+  {m:'BM-50',  use:'日處理約 75 kg',  dev:618000,  con:75000,  kg:75},
+  {m:'BM-99',  use:'日處理約 150 kg',     dev:808000,  con:90000,  kg:150},
+  {m:'BM-199', use:'日處理約 300 kg',    dev:988000,  con:120000, kg:300},
+  {m:'BM-400', use:'日處理約 600 kg',    dev:1670000, con:180000, kg:600}
 ];
 var f = R/(1-Math.pow(1+R,-N));
 var fmt = function(n){return Math.round(n).toLocaleString('en-US');};
