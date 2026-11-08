@@ -986,7 +986,6 @@ function renderQuotes() {
     '<div class="meta">' + (q.date ? '報價日期 ' + esc(q.date) + '｜' : '') + '建立 ' + esc(q.created) + '｜客戶 ' + esc(q.cust.name) + '</div>' +
     linesTable(q.lines) + quoteTotalsHtml(q) +
     (q.status === '已退回' && q.comment ? '<div class="alerts">退回原因：' + esc(q.comment) + '</div>' : q.comment ? '<div class="meta">御宇意見：' + esc(q.comment) + '</div>' : '') +
-    qHistHtml(q) +
     (q.status === '已核准' && !q.sealed && !q.sealOld ? '<div class="alerts">✅ 已核准，御宇用印中；用印完成後會以 LINE 通知您下載正式報價單。</div>' : q.sealed ? '<div class="meta">✅ 已用印 ' + esc(q.sealedAt) + '</div>' : '') +
     '<div class="row" style="margin-top:8px">' +
       (q.status === '已核准' && (q.sealed || q.sealOld) ? '<div><button class="btn sm" onclick="quotePdf(\'' + esc(q.id) + '\')">下載 PDF</button></div>' +
@@ -1263,8 +1262,8 @@ async function loadAdminQuotes(status) {
         quoteTotalsHtml(q) +
         (q.note ? '<div class="meta">備註：' + esc(q.note) + '</div>' : '') +
         (q.pre && q.pre.comment ? '<div class="meta">預審意見：' + esc(q.pre.comment) + '</div>' : '') +
-        (q.comment ? '<div class="meta">' + (/^待/.test(q.status) ? '前次退回原因：' : '審核意見：') + esc(q.comment) + '</div>' : '') +
-        qHistHtml(q) +
+        (q.comment ? (/^待/.test(q.status) ? '<div class="alerts">🔁 經銷商已修改後重新送出' + (qResend(q) ? '（第 ' + (qResend(q) + 1) + ' 次送審）' : '') + '<br>前次退回原因：' + esc(q.comment) + '</div>'
+          : '<div class="meta">審核意見：' + esc(q.comment) + '</div>') : '') +
         (wait ? '<div class="alerts">' + wait + '</div>' : '') +
         (edit ? '<textarea class="aq-comment" placeholder="審核意見（退回時必填）" style="margin-top:8px"></textarea>' +
           '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="reviewQuote(' + i + ', \'approve\')">' + (q.status === '待預審' ? '預審通過（送御宇核准）' : '核准並產生報價單') + '</button></div>' +
@@ -1297,6 +1296,7 @@ async function reviewQuote(i, action) {
 }
 
 // 審核紀錄：同一張報價單每次送出、修改重送、預審、退回、核准都保留（含第一次意見）
+function qResend(q) { return (q.history || []).filter(x => x.act === '修改重送').length; }
 function qHistHtml(q) {
   const h = q.history || [];
   if (!h.some(x => /退回|重送/.test(x.act))) return '';   // 有退回／重送過才顯示
