@@ -194,11 +194,7 @@ function lineFill() {
   try { LINE = JSON.parse(sessionStorage.getItem('yyLine') || 'null'); } catch (e) {}
   if (LINE && LINE.exp && LINE.exp * 1000 < Date.now()) LINE = null;
   const f = $('#f');
-  if (!LINE) {
-    $('#lineBtn').href = 'https://liff.line.me/' + LIFF_ID + '?survey=' + encodeURIComponent(EVENT);
-    $('#lineBtn').classList.remove('hidden');
-    return;
-  }
+  if (!LINE) return;   // 客戶問卷：不顯示 LINE 登入按鈕，避免進入報備系統
   if (LINE.name && !f.name.value) f.name.value = LINE.name;
   $('#lineBox').textContent = '已帶入 LINE 資料：' + (LINE.name || '') + '，請確認後補齊其餘欄位。';
   $('#lineBox').classList.remove('hidden');
