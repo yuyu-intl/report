@@ -1228,6 +1228,54 @@ async function loadAdminProgress() {
   } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
 }
 
+/* ===== 說明會問卷＋預約場勘（御宇管理員） ===== */
+let SV = { list: [], statuses: [], only: false };
+async function loadAdminSurveys(only) {
+  if (only != null) SV.only = only;
+  const box = $('#admin');
+  box.innerHTML = '<div class="center">讀取中…</div>';
+  window.scrollTo(0, 0);
+  try {
+    const r = await api('adminSurveys', { event: '20261112' });
+    if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
+    SV.list = r.list; SV.statuses = r.statuses;
+    const st = r.stat, list = SV.only ? r.list.filter(x => x.book) : r.list;
+    let h = '<button class="back" onclick="loadAdmin()">‹ 返回管理後台</button>' +
+      '<div class="card"><h2>說明會問卷（' + st.total + '）</h2><div class="stats">' +
+      '<div><b>' + st.total + '</b>填寫</div><div><b>' + st.book + '</b>預約場勘</div>' +
+      '<div><b' + (st.pending ? ' style="color:var(--red)"' : '') + '>' + st.pending + '</b>待聯繫</div><div><b>' + (st.avg || '—') + '</b>平均滿意度</div></div>' +
+      '<div class="row" style="margin-top:10px"><div><button class="btn sm' + (SV.only ? ' gray' : '') + '" onclick="loadAdminSurveys(false)">全部</button></div>' +
+      '<div><button class="btn sm' + (SV.only ? '' : ' gray') + '" onclick="loadAdminSurveys(true)">只看預約場勘</button></div></div>' +
+      '<div class="hint">問卷連結：https://liff.line.me/' + LIFF_ID + '?survey=20261112（LINE）／https://yuyu-intl.github.io/report/survey.html（一般網頁）</div></div>';
+    if (!list.length) h += '<div class="center">尚無資料</div>';
+    h += list.map(x => {
+      const i = SV.list.indexOf(x), hot = x.book && x.status === '待聯繫';
+      return '<div class="card case"' + (hot ? ' style="border-color:var(--red)"' : '') + '>' +
+        '<div class="top"><b>' + (x.book ? '🔥 ' : '') + esc(x.company) + '</b><span class="badge">' + esc(x.book ? (x.status || '待聯繫') : '問卷') + '</span></div>' +
+        '<div class="meta">' + esc(x.name) + (x.title ? ' ' + esc(x.title) : '') + '｜<a href="tel:' + esc(x.phone) + '">' + esc(x.phone) + '</a>｜' + esc(x.time) +
+          (x.ref ? '<br>推薦：' + esc(x.refName) + '（' + esc(x.ref) + '）' : '') + '</div>' +
+        '<div class="detail">滿意度 ' + esc(x.sat) + ' / 5' +
+          (x.interest ? '<br>感興趣：' + esc(x.interest) : '') + (x.concern ? '<br>顧慮：' + esc(x.concern) : '') +
+          (x.kg || x.fee ? '<br>月廚餘 ' + (x.kg ? Number(x.kg).toLocaleString() + ' kg' : '—') + '｜月清運費 ' + (x.fee ? Number(x.fee).toLocaleString() + ' 元' : '—') + (x.perKg ? '｜每公斤 ' + esc(x.perKg) + ' 元' : '') : '') +
+          (x.book ? '<br><b>場勘時段：' + esc(x.slots) + '</b><br>地址：' + esc(x.addr) + '<br>現場：' + esc(x.contact) + '｜<a href="tel:' + esc(x.tel) + '">' + esc(x.tel) + '</a>' : '') +
+          (x.note ? '<br>意見：' + esc(x.note) : '') + '</div>' +
+        (x.book && ME.isAdmin ? '<div class="row" style="margin-top:8px"><div><select id="svs' + i + '">' + SV.statuses.map(s => '<option' + (s === (x.status || '待聯繫') ? ' selected' : '') + '>' + s + '</option>').join('') + '</select></div>' +
+          '<div><input id="svo' + i + '" placeholder="負責經銷商（後續配對）" value="' + esc(x.owner) + '"></div></div>' +
+          '<input id="svm' + i + '" placeholder="御宇備註" value="' + esc(x.memo) + '" style="margin-top:6px">' +
+          '<button class="btn sm" style="margin-top:6px" onclick="saveSurvey(' + i + ')">儲存</button>'
+          : (x.owner || x.memo ? '<div class="meta">負責：' + (esc(x.owner) || '—') + (x.memo ? '｜備註：' + esc(x.memo) : '') + '</div>' : '')) +
+        '</div>';
+    }).join('');
+    box.innerHTML = h;
+  } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
+}
+async function saveSurvey(i) {
+  const x = SV.list[i];
+  const r = await api('adminSurveyUpdate', { event: '20261112', phone: x.phone, status: $('#svs' + i).value, owner: $('#svo' + i).value, memo: $('#svm' + i).value });
+  if (!r.ok) { alert(r.message); return; }
+  loadAdminSurveys();
+}
+
 /* ===== 報價單審核（御宇管理員） ===== */
 let AQ = { status: '待審核', list: [] };
 async function loadAdminQuotes(status) {
@@ -1328,7 +1376,7 @@ async function adminBadge() {
   try {
     const r = await api('adminOverview');
     if (!r.ok) return;
-    const n = r.agents.reduce((k, a) => k + (a.pending || 0), 0) + ((r.quoteCounts || {}).mine || 0) + ((r.quoteCounts || {}).seal || 0);
+    const n = r.agents.reduce((k, a) => k + (a.pending || 0), 0) + ((r.quoteCounts || {}).mine || 0) + ((r.quoteCounts || {}).seal || 0) + (r.surveyPending || 0);
     $('#adminTab').textContent = '管理後台' + (n ? '（' + n + '）' : '');
   } catch (e) {}
 }
@@ -1342,20 +1390,21 @@ async function loadAdmin() {
     adminAgents = r.agents;
     const sum = k => r.agents.reduce((n, a) => n + (a[k] || 0), 0);
     const waiting = r.agents.filter(a => a.status === '待審核');
-    const qc = r.quoteCounts || { mine: 0, seal: 0 };
+    const qc = r.quoteCounts || { mine: 0, seal: 0 }, sv = r.surveyPending || 0;
     let h = '<div class="card"><h2>總覽</h2><div class="stats">' +
       '<div><b>' + r.agents.filter(a => a.status === '已核准').length + '</b>經銷商</div><div><b>' + sum('total') + '</b>報備</div>' +
       '<div><b' + (sum('pending') ? ' style="color:var(--red)"' : '') + '>' + sum('pending') + '</b>待確認報備</div><div><b>' + sum('halfWon') + '</b>本半年成交</div></div>' +
-      (qc.mine || qc.seal || sum('pending') ? '<div class="alerts" style="margin-top:8px">🔔 待處理：' + [sum('pending') ? '報備審核 ' + sum('pending') + ' 件' : '', qc.mine ? '報價單審核 ' + qc.mine + ' 件' : '', qc.seal ? '報價單待用印 ' + qc.seal + ' 件' : ''].filter(Boolean).join('、') + '</div>' : '') +
+      (qc.mine || qc.seal || sv || sum('pending') ? '<div class="alerts" style="margin-top:8px">🔔 待處理：' + [sum('pending') ? '報備審核 ' + sum('pending') + ' 件' : '', qc.mine ? '報價單審核 ' + qc.mine + ' 件' : '', qc.seal ? '報價單待用印 ' + qc.seal + ' 件' : '', sv ? '🔥 預約場勘待聯繫 ' + sv + ' 件' : ''].filter(Boolean).join('、') + '</div>' : '') +
       '<div class="row" style="margin-top:10px"><div><button class="btn sm" onclick="loadAdminCases(\'\', \'待確認\')">報備審核' + (sum('pending') ? '（' + sum('pending') + '）' : '') + '</button></div>' +
       '<div><button class="btn sm" onclick="loadAdminCases(\'\', \'\', 1)">成交進度追蹤</button></div></div>' +
       '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadMonthly()">月結差價報表</button></div>' +
       '<div><button class="btn sm" onclick="loadTree()">經銷架構</button></div></div>' +
       '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadAdminProgress()">進度回報紀錄</button></div>' +
       '<div><button class="btn sm" onclick="loadAdminQuotes(\'待審核\')">報價單審核' + (qc.mine ? '（' + qc.mine + '）' : '') + '</button></div></div>' +
-      (qc.seal ? '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadAdminQuotes(\'待用印\')">報價單待用印（' + qc.seal + '）</button></div></div>' : '') + '</div>';
+      '<div class="row" style="margin-top:8px">' + (qc.seal ? '<div><button class="btn sm" onclick="loadAdminQuotes(\'待用印\')">報價單待用印（' + qc.seal + '）</button></div>' : '') +
+      '<div><button class="btn sm" onclick="loadAdminSurveys()">說明會問卷' + (sv ? '（🔥' + sv + '）' : '') + '</button></div></div></div>';
     const adm = $('#adminTab');
-    if (adm) adm.textContent = '管理後台' + (sum('pending') + qc.mine + qc.seal ? '（' + (sum('pending') + qc.mine + qc.seal) + '）' : '');
+    if (adm) adm.textContent = '管理後台' + (sum('pending') + qc.mine + qc.seal + sv ? '（' + (sum('pending') + qc.mine + qc.seal + sv) + '）' : '');
     if (waiting.length) {
       h += '<div class="card"><h2>待審核經銷商（' + waiting.length + '）</h2>' + waiting.map(a => {
         const i = adminAgents.indexOf(a);
@@ -1638,6 +1687,15 @@ async function markPaid(agentId) {
       try { name = (await liff.getProfile()).displayName || ''; } catch (e) {}
       try { sessionStorage.setItem('yyLine', JSON.stringify({ idToken: liff.getIDToken(), name: name, email: email, exp: exp })); } catch (e) {}
       location.replace('event.html?e=' + encodeURIComponent(q.get('event')) + (q.get('ref') ? '&ref=' + encodeURIComponent(q.get('ref')) : ''));
+      return;
+    }
+    if (q.get('survey')) {   // 說明會問卷＋預約場勘：帶 LINE 資料轉到問卷頁
+      let exp = 0;
+      try { exp = liff.getDecodedIDToken().exp || 0; } catch (e) {}
+      let name = '';
+      try { name = (await liff.getProfile()).displayName || ''; } catch (e) {}
+      try { sessionStorage.setItem('yyLine', JSON.stringify({ idToken: liff.getIDToken(), name: name, exp: exp })); } catch (e) {}
+      location.replace('survey.html?e=' + encodeURIComponent(q.get('survey')));
       return;
     }
     SETUP = q.get('setup') || '';
