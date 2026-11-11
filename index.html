@@ -1257,7 +1257,7 @@ async function loadAdminSurveys(only) {
         '<div class="detail">滿意度 ' + esc(x.sat) + ' / 5' +
           (x.interest ? '<br>感興趣：' + esc(x.interest) : '') + (x.concern ? '<br>顧慮：' + esc(x.concern) : '') +
           (x.kg || x.fee ? '<br>月廚餘 ' + (x.kg ? Number(x.kg).toLocaleString() + ' kg' : '—') + '｜月清運費 ' + (x.fee ? Number(x.fee).toLocaleString() + ' 元' : '—') + (x.perKg ? '｜每公斤 ' + esc(x.perKg) + ' 元' : '') : '') +
-          (x.book ? '<br><b>場勘時段：' + esc(x.slots) + '</b><br>地址：' + esc(x.addr) + '<br>現場：' + esc(x.contact) + '｜<a href="tel:' + esc(x.tel) + '">' + esc(x.tel) + '</a>' : '') +
+          (x.book ? '<br><b>🔥 預約場勘，請專人聯繫：' + esc(x.contact) + '｜<a href="tel:' + esc(x.tel) + '">' + esc(x.tel) + '</a></b>' + (x.slots ? '<br>時段：' + esc(x.slots) : '') + (x.addr ? '<br>地址：' + esc(x.addr) : '') : '') +
           (x.note ? '<br>意見：' + esc(x.note) : '') + '</div>' +
         (x.book && ME.isAdmin ? '<div class="row" style="margin-top:8px"><div><select id="svs' + i + '">' + SV.statuses.map(s => '<option' + (s === (x.status || '待聯繫') ? ' selected' : '') + '>' + s + '</option>').join('') + '</select></div>' +
           '<div><input id="svo' + i + '" placeholder="負責經銷商（後續配對）" value="' + esc(x.owner) + '"></div></div>' +
