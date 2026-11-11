@@ -118,14 +118,12 @@
 
     <div class="card">
       <div class="sec">D</div><h2>預約免費場勘</h2>
-      <div class="hint" style="margin:0 0 10px">專人到場評估放置空間、水電與排水銜接，並提供正式報價。</div>
+      <div class="hint" style="margin:0 0 10px">專人到場評估放置空間、水電與排水銜接，並提供正式報價。留下聯絡人與電話，將由專人與您聯繫安排時間。</div>
       <div class="yn" id="yn"><button type="button" data-v="1">要，預約場勘</button><button type="button" data-v="0">暫時不用</button></div>
       <div id="bookBox" class="hidden">
-        <label>希望時段（最多選 2 個） <span class="req">*</span></label><div class="opts slots" id="slots"></div>
-        <label>場勘地址 <span class="req">*</span></label><input name="addr" placeholder="縣市＋詳細地址" autocomplete="street-address">
         <div class="row">
-          <div><label>現場聯絡人</label><input name="contact" placeholder="同出席人可不填"></div>
-          <div><label>聯絡電話</label><input name="tel" inputmode="tel" placeholder="同手機可不填"></div>
+          <div><label>聯絡人 <span class="req">*</span></label><input name="contact" autocomplete="name"></div>
+          <div><label>聯絡電話 <span class="req">*</span></label><input name="tel" inputmode="tel" autocomplete="tel"></div>
         </div>
       </div>
     </div>
@@ -168,7 +166,10 @@ document.addEventListener('change', e => {
 $('#sat').onclick = e => { const b = e.target.closest('button'); if (!b) return; SAT = +b.dataset.v;
   [...$('#sat').children].forEach(x => x.classList.toggle('on', +x.dataset.v <= SAT)); };
 $('#yn').onclick = e => { const b = e.target.closest('button'); if (!b) return; BOOK = b.dataset.v === '1';
-  [...$('#yn').children].forEach(x => x.classList.toggle('on', x === b)); $('#bookBox').classList.toggle('hidden', !BOOK); };
+  [...$('#yn').children].forEach(x => x.classList.toggle('on', x === b)); $('#bookBox').classList.toggle('hidden', !BOOK);
+  const f = $('#f');   // 聯絡人／電話預設帶出席人資料，可修改
+  if (BOOK && !f.contact.value) f.contact.value = f.name.value;
+  if (BOOK && !f.tel.value) f.tel.value = f.phone.value; };
 function calc() {
   const kg = +$('#f').kg.value.replace(/[^\d.]/g, '') || 0, fee = +$('#f').fee.value.replace(/[^\d.]/g, '') || 0;
   if (!kg || !fee) { $('#calc').classList.add('hidden'); return; }
@@ -184,7 +185,7 @@ function calc() {
     if (!r.ok) { $('#closedMsg').textContent = r.message; $('#closedBox').classList.remove('hidden'); return; }
     $('#evName').textContent = r.event.name;
     if (r.closed) { $('#closedMsg').textContent = r.closed; $('#closedBox').classList.remove('hidden'); return; }
-    opts('#interest', r.interest, 'interest'); opts('#concern', r.concern, 'concern'); opts('#slots', r.slots, 'slots');
+    opts('#interest', r.interest, 'interest'); opts('#concern', r.concern, 'concern');
     $('#f').classList.remove('hidden');
     lineFill();
   } catch (err) { $('#loading').textContent = '連線失敗，請稍後重新整理，或來電 0921-899-383。'; }
@@ -205,15 +206,15 @@ $('#f').onsubmit = async e => {
   const data = { company: fd.get('company'), name: fd.get('name'), title: fd.get('title'), phone: fd.get('phone'),
     sat: SAT, interest: fd.getAll('interest'), concern: fd.getAll('concern'), concernOther: fd.get('concernOther'),
     kg: String(fd.get('kg')).replace(/[^\d.]/g, ''), fee: String(fd.get('fee')).replace(/[^\d.]/g, ''),
-    book: BOOK === true, slots: fd.getAll('slots'), addr: fd.get('addr'), contact: fd.get('contact'), tel: fd.get('tel'),
+    book: BOOK === true, contact: fd.get('contact'), tel: fd.get('tel'),
     note: fd.get('note'), website: fd.get('website'), event: EVENT };
   const need = { company: '公司名稱', name: '出席人姓名', phone: '手機' };
   for (const k in need) if (!String(data[k] || '').trim()) { alert('請填寫「' + need[k] + '」'); f[k].focus(); return; }
   if (!/^09\d{8}$/.test(data.phone.replace(/\D/g, ''))) { alert('手機格式不正確（09 開頭 10 碼）'); f.phone.focus(); return; }
   if (!SAT) { alert('請選擇說明會整體滿意度'); $('#sat').scrollIntoView({ block: 'center' }); return; }
   if (BOOK === null) { alert('請選擇是否預約免費場勘'); $('#yn').scrollIntoView({ block: 'center' }); return; }
-  if (BOOK && !data.slots.length) { alert('請選擇希望的場勘時段'); $('#slots').scrollIntoView({ block: 'center' }); return; }
-  if (BOOK && !String(data.addr || '').trim()) { alert('請填寫場勘地址'); f.addr.focus(); return; }
+  if (BOOK && !String(data.contact || '').trim()) { alert('請填寫聯絡人'); f.contact.focus(); return; }
+  if (BOOK && String(data.tel || '').replace(/\D/g, '').length < 8) { alert('請填寫聯絡電話'); f.tel.focus(); return; }
   if (LINE && LINE.idToken) data.idToken = LINE.idToken;
   const btn = $('#btn'); btn.disabled = true; btn.textContent = '送出中…';
   try {
