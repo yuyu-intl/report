@@ -76,7 +76,6 @@
   <div class="org">御宇國際企業有限公司</div>
   <div class="tag">感謝您今日蒞臨</div>
   <h1>說明會回饋問卷<br><em>＋ 預約免費場勘</em></h1>
-  <div class="sub" id="evName">BM 系列廚餘全去化處理機說明會</div>
 </div>
 <main>
   <div id="closedBox" class="card hidden"><div class="closed" id="closedMsg"></div>
@@ -183,7 +182,6 @@ function calc() {
     const r = await call('surveyInfo', { event: EVENT });
     $('#loading').classList.add('hidden');
     if (!r.ok) { $('#closedMsg').textContent = r.message; $('#closedBox').classList.remove('hidden'); return; }
-    $('#evName').textContent = r.event.name;
     if (r.closed) { $('#closedMsg').textContent = r.closed; $('#closedBox').classList.remove('hidden'); return; }
     opts('#interest', r.interest, 'interest'); opts('#concern', r.concern, 'concern');
     $('#f').classList.remove('hidden');
