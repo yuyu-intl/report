@@ -78,8 +78,7 @@
   <h1>說明會回饋問卷<br><em>＋ 預約免費場勘</em></h1>
 </div>
 <main>
-  <div id="closedBox" class="card hidden"><div class="closed" id="closedMsg"></div>
-    <a class="btn call" href="tel:+886921899383">洽詢專線 0921-899-383</a></div>
+  <div id="closedBox" class="card hidden"><div class="closed" id="closedMsg"></div></div>
   <div id="loading" class="card center">讀取中…</div>
 
   <form id="f" class="hidden" autocomplete="on" novalidate>
@@ -136,9 +135,9 @@
   </form>
 
   <div id="done" class="card done hidden"><div class="ic" id="doneIc">✅</div><p id="doneMsg"></p>
-    <a class="btn call" href="tel:+886921899383">洽詢專線 0921-899-383</a></div>
+</div>
 
-  <div class="foot">主辦：御宇國際企業有限公司｜洽詢專線 0921-899-383</div>
+  <div class="foot">主辦：御宇國際企業有限公司</div>
 </main>
 <script>
 const LIFF_ID = '2012023290-1MVnfTqT';
@@ -186,7 +185,7 @@ function calc() {
     opts('#interest', r.interest, 'interest'); opts('#concern', r.concern, 'concern');
     $('#f').classList.remove('hidden');
     lineFill();
-  } catch (err) { $('#loading').textContent = '連線失敗，請稍後重新整理，或來電 0921-899-383。'; }
+  } catch (err) { $('#loading').textContent = '連線失敗，請稍後重新整理。'; }
 })();
 let LINE = null;
 function lineFill() {
@@ -221,7 +220,7 @@ $('#f').onsubmit = async e => {
     $('#doneIc').textContent = r.book ? '📅' : '✅';
     $('#doneMsg').textContent = r.message;
     f.classList.add('hidden'); $('#done').classList.remove('hidden'); window.scrollTo(0, 0);
-  } catch (err) { alert('連線失敗，請稍後再試，或來電 0921-899-383'); }
+  } catch (err) { alert('連線失敗，請稍後再試'); }
   finally { btn.disabled = false; btn.textContent = '送出問卷'; }
 };
 </script>
