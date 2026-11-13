@@ -188,8 +188,8 @@
       <div class="warn" style="background:#fff4e0;color:#8a4b00">⚠ 統一編號必須填寫正確才能鎖定：系統以「統編＋縣市」鎖定客戶保護期，統編錯誤無法送出；若填成別家公司的統編，此客戶仍可被他人以正確統編報備，您的報備將不受保護。</div>
       <div class="hint">不知道統編？可至 <a href="https://findbiz.nat.gov.tw/" target="_blank" rel="noopener">經濟部商工登記查詢</a> 以公司名稱查詢核對。</div>
       <div class="row">
-        <div><label>客戶類型 <span class="req">*</span></label>
-          <select name="orgType" required>
+        <div><label>客戶類型</label>
+          <select name="orgType">
             <option value="">請選擇</option>
             <option>飯店／旅館</option><option>醫院／長照機構</option><option>學校</option>
             <option>團膳業者</option><option>餐廳／連鎖餐飲</option><option>市場／商場美食街</option>
@@ -214,12 +214,13 @@
 
     <div class="card">
       <h2>廚餘狀況</h2>
-      <label>估計每日廚餘量 <span class="req">*</span></label>
-      <select name="wasteVolume" required>
-        <option value="">請選擇</option>
-        <option>100 公斤以下</option><option>100–200 公斤</option><option>200–500 公斤</option>
-        <option>500 公斤以上</option><option>不清楚</option>
-      </select>
+      <div class="row">
+        <div><label>日處理量（kg／日）</label><input name="wasteDaily" inputmode="decimal" placeholder="例：250"></div>
+        <div><label>每月工作天</label><input name="workDays" inputmode="numeric" value="26"></div>
+      </div>
+      <label>目前月處理費（元／月）</label><input name="monthlyFee" inputmode="numeric" placeholder="例：60000">
+      <div class="hint" id="fWasteCalc"></div>
+      <input type="hidden" name="wasteVolume">
       <label>目前廚餘處理方式</label>
       <select name="currentMethod">
         <option value="">請選擇</option>
@@ -229,7 +230,7 @@
     </div>
 
     <div class="card">
-      <h2>關鍵聯絡人</h2>
+      <h2>關鍵聯絡人與初訪</h2>
       <div class="row">
         <div><label>姓名 <span class="req">*</span></label><input name="contactName" required></div>
         <div><label>職稱</label><input name="contactTitle" placeholder="總務／主廚／採購"></div>
@@ -238,13 +239,12 @@
         <div><label>LINE ID</label><input name="contactLine" placeholder="選填"></div>
         <div><label>電話</label><input name="contactPhone" inputmode="tel" placeholder="選填"></div>
       </div>
-      <div class="hint">若選「御宇可直接聯繫」，LINE ID 或電話請至少填一項。</div>
-      <label>與您的關係 <span class="req">*</span></label>
-      <div class="chips">
-        <label><input type="radio" name="relation" value="熟識可引薦" required>熟識可引薦</label>
-        <label><input type="radio" name="relation" value="認識">認識</label>
-        <label><input type="radio" name="relation" value="僅知道">僅知道</label>
+      <label>初訪時間 <span class="req">*</span></label>
+      <div class="row">
+        <div><input type="date" name="visitDate" required></div>
+        <div><select name="visitSlot" required><option value="">時段</option><option>上午</option><option>下午</option><option>晚上</option></select></div>
       </div>
+      <div class="hint">初訪時須完成環境評估：220V 單相歐規插座、150×100 公分放置空間、排水，各拍照回報。</div>
     </div>
 
     <div class="card">
@@ -524,7 +524,11 @@ form.onsubmit = async e => {
   if (!taxOk(form.taxId.value.trim())) { alert('統一編號檢查碼不正確，請至經濟部商工登記查詢核對。統編必須正確才能鎖定保護期。'); return; }
   if (!$('#consent').checked) { alert('請勾選個資同意聲明'); return; }
   if (ME.central && !form.salesId.value) { alert('請選擇承辦業務'); return; }
+  if (!form.visitDate.value || !form.visitSlot.value) { alert('請填寫初訪日期與時段'); return; }
+  if (form.visitDate.value < todayStr()) { alert('初訪日期不能早於今天'); return; }
   const data = Object.fromEntries(new FormData(form).entries());
+  data.visitTime = data.visitDate + ' ' + data.visitSlot;
+  data.wasteVolume = wasteBucket(parseFloat(data.wasteDaily) || 0);
   data.needs = '廚餘處理';
   if (data.canContact === '可直接聯繫' && !data.contactLine.trim() && !data.contactPhone.trim()) {
     alert('選擇「可直接聯繫」時，請填寫聯絡人的 LINE ID 或電話'); return;
@@ -542,6 +546,7 @@ form.onsubmit = async e => {
       const keep = { agentName: data.agentName, agentPhone: data.agentPhone, salesId: data.salesId || '' };
       form.reset();
       Object.keys(keep).forEach(k => form[k].value = keep[k]);
+      wasteCalc();
       $('#dupMsg').classList.add('hidden');
       locked = false;
     }
@@ -552,6 +557,18 @@ form.onsubmit = async e => {
   }
 };
 $('#again').onclick = () => openTab('form');
+// 報備表的廚餘量（同廚餘試算）：日處理量 × 工作天 → 月處理量、每公斤處理費、建議機型
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function wasteBucket(d) { return !d ? '不清楚' : d <= 100 ? '100 公斤以下' : d <= 200 ? '100–200 公斤' : d <= 500 ? '200–500 公斤' : '500 公斤以上'; }
+function wasteCalc() {
+  const daily = parseFloat(form.wasteDaily.value) || 0, days = parseFloat(form.workDays.value) || 0, fee = parseFloat(form.monthlyFee.value) || 0;
+  const month = daily * days, perKg = month > 0 && fee > 0 ? fee / month : 0;
+  const m = daily > 0 ? CALC_MODELS.find(x => x[1] >= daily) : null;
+  $('#fWasteCalc').textContent = daily ? '月處理量 ' + nf(month) + ' kg' + (perKg ? '｜每公斤處理費 ' + nf(perKg, 2) + ' 元' : '') +
+    '｜建議機型 ' + (m ? m[0] : 'BM-400 × ' + Math.ceil(daily / 400) + ' 台') : '';
+}
+['wasteDaily', 'workDays', 'monthlyFee'].forEach(n => form[n].addEventListener('input', wasteCalc));
+form.visitDate.min = todayStr();
 
 /* ===== 我的案件 ===== */
 function progressBar(stage) {
@@ -807,7 +824,8 @@ function evToReport(k) {
   const phone = ph0(x.phone);
   set('orgName', x.company); set('taxId', x.taxId); set('city', x.city);
   set('orgType', { '宴會廳／婚宴會館': '餐廳／連鎖餐飲' }[x.industry] || x.industry);
-  set('wasteVolume', { '50 公斤以下': '100 公斤以下', '50–100 公斤': '100 公斤以下', '200–400 公斤': '200–500 公斤' }[x.waste] || x.waste);
+  const wd = { '50 公斤以下': 50, '50–100 公斤': 100, '100–200 公斤': 200, '200–400 公斤': 400 }[x.waste];
+  if (wd) { set('wasteDaily', String(wd)); wasteCalc(); }
   set('currentMethod', { '已有處理設備': '自行處理／已有設備' }[x.method] || x.method);
   set('contactName', x.name); set('contactTitle', x.title); set('contactPhone', phone);
   setTimeout(() => {
@@ -1148,6 +1166,12 @@ async function openProgress(caseId) {
       '<label>回報項目 <span class="req">*</span></label><div class="chips">' +
         r.items.map((x, i) => '<label><input type="radio" name="item" value="' + esc(x) + '"' + (i === 0 ? ' checked' : '') + ' onchange="pgHint()">' + esc(x) + '</label>').join('') + '</div>' +
       '<div class="hint" id="pgHint"></div>' +
+      '<div id="pgEnv" class="hidden">' + ENV_ITEMS.map((x, i) =>
+        '<div class="pending" style="margin-top:8px"><b>' + esc(x) + '</b> <span class="req">*</span><div class="chips">' +
+        '<label><input type="radio" name="env' + i + '" value="符合" onchange="pgEnv(' + i + ')">符合</label>' +
+        '<label><input type="radio" name="env' + i + '" value="不符合" onchange="pgEnv(' + i + ')">不符合</label></div>' +
+        '<input name="envNote' + i + '" class="hidden" placeholder="不符合原因／現場狀況">' +
+        '<label style="margin-top:6px">照片 <span class="req">*</span></label><input type="file" name="envPhoto' + i + '" accept="image/*"></div>').join('') + '</div>' +
       '<label>日期 <span class="req">*</span></label><input type="date" name="date" value="' + today() + '" max="' + today() + '">' +
       '<label>說明 <span class="req">*</span></label><textarea name="note" placeholder="例：拜訪總務王經理，確認每日廚餘約 250 公斤；預計放置於後場卸貨區，需確認電源與排水"></textarea>' +
       '<label>附件（照片或 PDF，最多 5 個）</label><input type="file" name="files" accept="image/*,application/pdf" multiple>' +
@@ -1164,9 +1188,14 @@ async function openProgress(caseId) {
     window.scrollTo(0, 0);
   } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
 }
+const ENV_ITEMS = ['220V 單相歐規插座', '150×100 公分放置空間', '排水確認'];
+function pgEnv(i) { const f = $('#pgForm'); f['envNote' + i].classList.toggle('hidden', (f.querySelector('input[name=env' + i + ']:checked') || {}).value !== '不符合'); }
 function pgHint() {
   const v = ($('#pgForm').querySelector('input[name=item]:checked') || {}).value;
-  $('#pgHint').textContent = v === '環境評估' ? '請附上填好的「設備安裝環境評估表」（拍照或 PDF），送出後推進到「評估通過」；御宇會將評估表轉中信技術審核（簽約前須通過）。'
+  $('#pgEnv').classList.toggle('hidden', v !== '初訪');
+  $('#pgForm').note.placeholder = v === '初訪' ? '選填：其他現場狀況，例：每日廚餘約 250 公斤，預計放後場卸貨區' : '例：拜訪總務王經理，確認每日廚餘約 250 公斤；預計放置於後場卸貨區，需確認電源與排水';
+  $('#pgHint').textContent = v === '初訪' ? '初訪須完成環境評估：下列三項逐項勾選並各附 1 張照片（不符合請寫原因），送出後推進到「初訪」。'
+    : v === '環境評估' ? '請附上填好的「設備安裝環境評估表」（拍照或 PDF），送出後推進到「評估通過」；御宇會將評估表轉中信技術審核（簽約前須通過）。'
     : PG_DOC[v] ? '請附上' + PG_DOC[v] + '（拍照或 PDF），日期填實際' + v + '日；送出後推進到「' + v + '」、案件改為成交，並填入案件' + v + '日。'
     : '送出後推進到「' + (PG_TARGET[v] || v) + '」。建議附上現場照片。';
 }
@@ -1196,11 +1225,24 @@ async function submitProgress(e) {
   if (list.length > 5) { alert('附件最多 5 個'); return; }
   if (item === '環境評估' && !list.length) { alert('請附上「設備安裝環境評估表」'); return; }
   if (PG_DOC[item] && !list.length) { alert('回報「' + item + '」請附上' + PG_DOC[item]); return; }
-  if (f.note.value.trim().length < 5) { alert('請簡短說明情況'); return; }
-  const btn = $('#pgBtn'); btn.disabled = true; btn.textContent = list.length ? '上傳附件中…' : '送出中…';
+  let env = null, envFiles = [];
+  if (item === '初訪') {
+    env = [];
+    for (let i = 0; i < ENV_ITEMS.length; i++) {
+      const v = (f.querySelector('input[name=env' + i + ']:checked') || {}).value, ph = f['envPhoto' + i].files[0];
+      if (!v) { alert('請勾選「' + ENV_ITEMS[i] + '」是否符合'); return; }
+      if (v === '不符合' && !f['envNote' + i].value.trim()) { alert('請填寫「' + ENV_ITEMS[i] + '」不符合的原因'); f['envNote' + i].focus(); return; }
+      if (!ph) { alert('請附上「' + ENV_ITEMS[i] + '」的照片'); return; }
+      env.push({ item: ENV_ITEMS[i], result: v, note: f['envNote' + i].value.trim() });
+      envFiles.push({ f: ph, name: ['插座', '空間', '排水'][i] });
+    }
+    if (list.length > 2) { alert('初訪其他附件最多 2 個（三項環境照片另計）'); return; }
+  } else if (f.note.value.trim().length < 5) { alert('請簡短說明情況'); return; }
+  const note = env ? env.map(x => (x.result === '符合' ? '✅ ' : '❌ ') + x.item + '：' + x.result + (x.note ? '（' + x.note + '）' : '')).join('\n') + (f.note.value.trim() ? '\n' + f.note.value.trim() : '') : f.note.value;
+  const btn = $('#pgBtn'); btn.disabled = true; btn.textContent = list.length || envFiles.length ? '上傳附件中…' : '送出中…';
   try {
-    const files = await Promise.all(list.map(readFile));
-    const r = await api('progressSubmit', { caseId: PG.caseId, item: item, date: f.date.value, note: f.note.value, files: files });
+    const files = (await Promise.all(envFiles.map(x => readFile(x.f).then(r => Object.assign(r, { name: '環境評估_' + x.name + '.jpg' }))))).concat(await Promise.all(list.map(readFile)));
+    const r = await api('progressSubmit', { caseId: PG.caseId, item: item, date: f.date.value, note: note, env: env, files: files });
     alert(r.ok ? '✅ ' + r.message : r.message);
     if (r.ok) openProgress(PG.caseId);
   } catch (err) { alert(err.message && err.message !== 'relogin' ? err.message : '連線失敗，請稍後再試'); }
