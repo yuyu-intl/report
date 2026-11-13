@@ -244,7 +244,7 @@
         <div><input type="date" name="visitDate" required></div>
         <div><select name="visitSlot" required><option value="">時段</option><option>上午</option><option>下午</option><option>晚上</option></select></div>
       </div>
-      <div class="hint">初訪時須完成環境評估：220V 單相歐規插座、150×100 公分放置空間、排水，各拍照回報。</div>
+      <div class="hint">初訪時須完成環境評估：220V 單相歐規插座、150×100 公分放置空間、排水（照片選填）。</div>
     </div>
 
     <div class="card">
@@ -1171,7 +1171,7 @@ async function openProgress(caseId) {
         '<label><input type="radio" name="env' + i + '" value="符合" onchange="pgEnv(' + i + ')">符合</label>' +
         '<label><input type="radio" name="env' + i + '" value="不符合" onchange="pgEnv(' + i + ')">不符合</label></div>' +
         '<input name="envNote' + i + '" class="hidden" placeholder="不符合原因／現場狀況">' +
-        '<label style="margin-top:6px">照片 <span class="req">*</span></label><input type="file" name="envPhoto' + i + '" accept="image/*"></div>').join('') + '</div>' +
+        '<label style="margin-top:6px">照片（選填）</label><input type="file" name="envPhoto' + i + '" accept="image/*"></div>').join('') + '</div>' +
       '<label>日期 <span class="req">*</span></label><input type="date" name="date" value="' + today() + '" max="' + today() + '">' +
       '<label>說明 <span class="req">*</span></label><textarea name="note" placeholder="例：拜訪總務王經理，確認每日廚餘約 250 公斤；預計放置於後場卸貨區，需確認電源與排水"></textarea>' +
       '<label>附件（照片或 PDF，最多 5 個）</label><input type="file" name="files" accept="image/*,application/pdf" multiple>' +
@@ -1194,7 +1194,7 @@ function pgHint() {
   const v = ($('#pgForm').querySelector('input[name=item]:checked') || {}).value;
   $('#pgEnv').classList.toggle('hidden', v !== '初訪');
   $('#pgForm').note.placeholder = v === '初訪' ? '選填：其他現場狀況，例：每日廚餘約 250 公斤，預計放後場卸貨區' : '例：拜訪總務王經理，確認每日廚餘約 250 公斤；預計放置於後場卸貨區，需確認電源與排水';
-  $('#pgHint').textContent = v === '初訪' ? '初訪須完成環境評估：下列三項逐項勾選並各附 1 張照片（不符合請寫原因），送出後推進到「初訪」。'
+  $('#pgHint').textContent = v === '初訪' ? '初訪須完成環境評估：下列三項逐項勾選「符合／不符合」（不符合請寫原因，照片選填），送出後推進到「初訪」。'
     : v === '環境評估' ? '請附上填好的「設備安裝環境評估表」（拍照或 PDF），送出後推進到「評估通過」；御宇會將評估表轉中信技術審核（簽約前須通過）。'
     : PG_DOC[v] ? '請附上' + PG_DOC[v] + '（拍照或 PDF），日期填實際' + v + '日；送出後推進到「' + v + '」、案件改為成交，並填入案件' + v + '日。'
     : '送出後推進到「' + (PG_TARGET[v] || v) + '」。建議附上現場照片。';
@@ -1232,9 +1232,8 @@ async function submitProgress(e) {
       const v = (f.querySelector('input[name=env' + i + ']:checked') || {}).value, ph = f['envPhoto' + i].files[0];
       if (!v) { alert('請勾選「' + ENV_ITEMS[i] + '」是否符合'); return; }
       if (v === '不符合' && !f['envNote' + i].value.trim()) { alert('請填寫「' + ENV_ITEMS[i] + '」不符合的原因'); f['envNote' + i].focus(); return; }
-      if (!ph) { alert('請附上「' + ENV_ITEMS[i] + '」的照片'); return; }
       env.push({ item: ENV_ITEMS[i], result: v, note: f['envNote' + i].value.trim() });
-      envFiles.push({ f: ph, name: ['插座', '空間', '排水'][i] });
+      if (ph) envFiles.push({ f: ph, name: ['插座', '空間', '排水'][i] });
     }
     if (list.length > 2) { alert('初訪其他附件最多 2 個（三項環境照片另計）'); return; }
   } else if (f.note.value.trim().length < 5) { alert('請簡短說明情況'); return; }
