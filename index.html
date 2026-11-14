@@ -395,6 +395,8 @@ async function api(action, data) {
 // 管理後台總覽快取：開啟時背景先讀，60 秒內進出管理後台不再重讀；任何修改後自動失效
 const API_READS = ['init', 'adminOverview', 'adminQuotes', 'adminProgress', 'adminSurveys', 'myCases', 'myTeam', 'check', 'progressInit', 'myEventRefs'];
 let ADM = null;
+// 說明會開關：11/12 場次已結束，關閉（說明會分頁、管理後台「說明會問卷」與提醒都不顯示；資料保留；下次辦說明會改回 true）
+const EVENT_ON = false;
 function adminData(fresh) {
   if (fresh || !ADM || Date.now() - ADM.t > 60000) {
     const p = api('adminOverview').then(r => { if (!r.ok && ADM && ADM.p === p) ADM = null; return r; }, e => { if (ADM && ADM.p === p) ADM = null; throw e; });
@@ -1428,7 +1430,7 @@ async function adminBadge() {
   try {
     const r = await adminData();
     if (!r.ok) return;
-    const n = r.agents.reduce((k, a) => k + (a.pending || 0), 0) + ((r.quoteCounts || {}).mine || 0) + ((r.quoteCounts || {}).seal || 0) + (r.surveyPending || 0);
+    const n = r.agents.reduce((k, a) => k + (a.pending || 0), 0) + ((r.quoteCounts || {}).mine || 0) + ((r.quoteCounts || {}).seal || 0) + (EVENT_ON ? r.surveyPending || 0 : 0);
     $('#adminTab').textContent = '管理後台' + (n ? '（' + n + '）' : '');
   } catch (e) {}
 }
@@ -1442,7 +1444,7 @@ async function loadAdmin() {
     adminAgents = r.agents;
     const sum = k => r.agents.reduce((n, a) => n + (a[k] || 0), 0);
     const waiting = r.agents.filter(a => a.status === '待審核');
-    const qc = r.quoteCounts || { mine: 0, seal: 0 }, sv = r.surveyPending || 0;
+    const qc = r.quoteCounts || { mine: 0, seal: 0 }, sv = EVENT_ON ? r.surveyPending || 0 : 0;
     let h = '<div class="card"><h2>總覽</h2><div class="stats">' +
       '<div><b>' + r.agents.filter(a => a.status === '已核准').length + '</b>經銷商</div><div><b>' + sum('total') + '</b>報備</div>' +
       '<div><b' + (sum('pending') ? ' style="color:var(--red)"' : '') + '>' + sum('pending') + '</b>待確認報備</div><div><b>' + sum('halfWon') + '</b>本半年成交</div></div>' +
@@ -1454,7 +1456,7 @@ async function loadAdmin() {
       '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="loadAdminProgress()">進度回報紀錄</button></div>' +
       '<div><button class="btn sm" onclick="loadAdminQuotes(\'待審核\')">報價單審核' + (qc.mine ? '（' + qc.mine + '）' : '') + '</button></div></div>' +
       '<div class="row" style="margin-top:8px">' + (qc.seal ? '<div><button class="btn sm" onclick="loadAdminQuotes(\'待用印\')">報價單待用印（' + qc.seal + '）</button></div>' : '') +
-      '<div><button class="btn sm" onclick="loadAdminSurveys()">說明會問卷' + (sv ? '（🔥' + sv + '）' : '') + '</button></div></div></div>';
+      (EVENT_ON ? '<div><button class="btn sm" onclick="loadAdminSurveys()">說明會問卷' + (sv ? '（🔥' + sv + '）' : '') + '</button></div>' : '') + '</div></div>';
     const adm = $('#adminTab');
     if (adm) adm.textContent = '管理後台' + (sum('pending') + qc.mine + qc.seal + sv ? '（' + (sum('pending') + qc.mine + qc.seal + sv) + '）' : '');
     if (waiting.length) {
@@ -1762,9 +1764,7 @@ async function markPaid(agentId) {
     if (r.isViewer) viewerMode();
     if (r.adminGranted) alert('✅ 您已成為御宇國際報備系統的管理員，可使用「管理後台」。');
     if (r.isLeader) $('#teamTab').classList.remove('hidden');
-    // 說明會分頁：11/12 場次已結束，關閉（資料保留；下次辦說明會改回 true）
-    const EVENT_TAB_ON = false;
-    if (EVENT_TAB_ON && (r.isAdmin || (a && a.code && a.status === '已核准'))) $('#eventTab').classList.remove('hidden');
+    if (EVENT_ON && (r.isAdmin || (a && a.code && a.status === '已核准'))) $('#eventTab').classList.remove('hidden');
     const canBonus = r.central || (r.isAdmin && r.centralAgents && r.centralAgents.length);
     if (canBonus) $('#bonusTab').classList.remove('hidden');
     fillAgent();
