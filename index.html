@@ -389,7 +389,18 @@ async function api(action, data) {
   });
   const j = await res.json();
   if (!j.ok && /登入已過期/.test(j.message || '')) { relogin(); throw new Error('relogin'); }
+  if (!API_READS.includes(action)) ADM = null;   // 有寫入動作 → 管理後台總覽重新讀取
   return j;
+}
+// 管理後台總覽快取：開啟時背景先讀，60 秒內進出管理後台不再重讀；任何修改後自動失效
+const API_READS = ['init', 'adminOverview', 'adminQuotes', 'adminProgress', 'adminSurveys', 'myCases', 'myTeam', 'check', 'progressInit', 'myEventRefs'];
+let ADM = null;
+function adminData(fresh) {
+  if (fresh || !ADM || Date.now() - ADM.t > 60000) {
+    const p = api('adminOverview').then(r => { if (!r.ok && ADM && ADM.p === p) ADM = null; return r; }, e => { if (ADM && ADM.p === p) ADM = null; throw e; });
+    ADM = { t: Date.now(), p: p };
+  }
+  return ADM.p;
 }
 
 function show(id) {
@@ -1415,7 +1426,7 @@ let adminAgents = [];
 // 管理後台分頁顯示待處理數量（報備審核＋報價單審核＋待用印），登入後背景讀取
 async function adminBadge() {
   try {
-    const r = await api('adminOverview');
+    const r = await adminData();
     if (!r.ok) return;
     const n = r.agents.reduce((k, a) => k + (a.pending || 0), 0) + ((r.quoteCounts || {}).mine || 0) + ((r.quoteCounts || {}).seal || 0) + (r.surveyPending || 0);
     $('#adminTab').textContent = '管理後台' + (n ? '（' + n + '）' : '');
@@ -1426,7 +1437,7 @@ async function loadAdmin() {
   const box = $('#admin');
   box.innerHTML = '<div class="center">讀取中…</div>';
   try {
-    const r = await api('adminOverview');
+    const r = await adminData();
     if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
     adminAgents = r.agents;
     const sum = k => r.agents.reduce((n, a) => n + (a[k] || 0), 0);
