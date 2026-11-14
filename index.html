@@ -1751,7 +1751,9 @@ async function markPaid(agentId) {
     if (r.isViewer) viewerMode();
     if (r.adminGranted) alert('✅ 您已成為御宇國際報備系統的管理員，可使用「管理後台」。');
     if (r.isLeader) $('#teamTab').classList.remove('hidden');
-    if (r.isAdmin || (a && a.code && a.status === '已核准')) $('#eventTab').classList.remove('hidden');
+    // 說明會分頁：11/12 場次已結束，關閉（資料保留；下次辦說明會改回 true）
+    const EVENT_TAB_ON = false;
+    if (EVENT_TAB_ON && (r.isAdmin || (a && a.code && a.status === '已核准'))) $('#eventTab').classList.remove('hidden');
     const canBonus = r.central || (r.isAdmin && r.centralAgents && r.centralAgents.length);
     if (canBonus) $('#bonusTab').classList.remove('hidden');
     fillAgent();
