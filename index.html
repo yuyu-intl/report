@@ -594,6 +594,21 @@ function dateLine(c) {
     .filter(x => x[1]).map(x => x[0] + ' ' + esc(x[1]));
   return parts.length ? '<div class="meta">' + parts.join('｜') + '</div>' : '';
 }
+// 我的案件：報備時填的客戶資料（可展開查看）
+function wasteText(c) {
+  const d = +c.wasteDaily || 0, w = +c.workDays || 0, f = +c.monthlyFee || 0;
+  if (!d) return c.waste || '';
+  const mo = d * w;
+  return d + ' kg／日' + (w ? '｜每月 ' + w + ' 天，月處理量 ' + mo.toLocaleString() + ' kg' : '') + (f ? '｜月處理費 ' + f.toLocaleString() + ' 元' + (mo ? '（每公斤 ' + (Math.round(f / mo * 100) / 100) + ' 元）' : '') : '');
+}
+function myDetail(c) {
+  const row = (k, v) => v ? '<div><span class="k">' + k + '：</span>' + esc(v) + '</div>' : '';
+  return '<details class="detail"><summary>報備資料</summary>' +
+    row('統一編號', c.taxId) + row('客戶類型', c.orgType) + row('地址', c.address) +
+    row('聯絡人', [c.contact, c.title].filter(Boolean).join('／')) + row('電話', c.contactPhone) + row('LINE ID', c.contactLine) +
+    row('初訪時間', c.firstVisit) + row('廚餘量', wasteText(c)) + row('目前處理', c.method) + row('報備備註', c.note) +
+  '</details>';
+}
 async function loadCases() {
   show('list');
   const box = $('#list');
@@ -620,6 +635,7 @@ async function loadCases() {
         (c.model ? '<div class="fee">機型 ' + esc(c.model) + (c.fee !== '' ? '｜預估服務費 <b>' + esc(c.fee) + ' 萬</b>（未稅，驗收且全額付清後結算）' : '') + '</div>' : '') +
         dateLine(c) +
         (c.reply ? '<div class="meta">御宇回覆：' + esc(c.reply) + '</div>' : '') +
+        myDetail(c) +
         '<div class="row" style="margin-top:8px">' +
           (c.status === '待確認' || c.status === '有效' || (c.status === '成交' && ['簽約', '交機'].indexOf(c.stage) >= 0) ? '<div><button class="btn sm" onclick="openProgress(\'' + esc(c.id) + '\')">📝 回報進度</button></div>' : '') +
           (ME.quoteOpen && quotable(c.status) ? '<div><button class="btn sm gray" onclick="openQuote(\'' + esc(c.id) + '\')">📄 報價單</button></div>' : '') +
@@ -1598,6 +1614,7 @@ function caseCard(c) {
     '<details class="detail"><summary>客戶與聯絡資料</summary>' +
       row('類型', c.orgType) + row('地址', c.address) + row('每日廚餘量', c.waste) + row('目前處理', c.method) +
       row('聯絡人', [c.contact, c.title].filter(Boolean).join('／')) + row('LINE ID', c.contactLine) + row('電話', c.contactPhone) +
+      row('初訪時間', c.firstVisit) + (c.wasteDaily ? row('廚餘量', wasteText(c)) : '') +
       row('關係', c.relation) + row('聯繫方式', c.canContact) + row('陪同拜訪', c.accompany) + row('建議時間', c.visitTime) +
       row('報備備註', c.note) + row('報備人手機', c.agentPhone) +
     '</details>' +
