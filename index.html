@@ -143,7 +143,7 @@
     <div class="card">
       <h2>經銷商登記</h2>
       <label>經銷商名稱 <span class="req">*</span></label><input name="company" required placeholder="公司或個人工作室名稱">
-      <label>統一編號</label><input name="taxId" inputmode="numeric" maxlength="8" placeholder="個人合作夥伴可留空">
+      <label>統一編號</label><input name="taxId" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="8 碼數字；個人合作夥伴可留空">
       <div class="row">
         <div><label>聯絡人姓名 <span class="req">*</span></label><input name="name" required></div>
         <div><label>手機</label><input name="phone" inputmode="tel" placeholder="選填"></div>
@@ -468,6 +468,7 @@ function showReg() {
 reg.onsubmit = async e => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(reg).entries());
+  if (data.taxId && !/^\d{8}$/.test(data.taxId)) { alert('統一編號須為 8 碼數字（個人合作夥伴可留空）'); return; }
   if (SETUP && ME.setup && ME.setup.company) { data.setup = SETUP; data.level = 'A級'; }
   const btn = $('#regBtn'); btn.disabled = true; btn.textContent = '送出中…';
   try {
@@ -526,7 +527,22 @@ function runCheck() {
     } catch (e) {}
   }, 400);
 }
-form.taxId.addEventListener('input', () => { if (form.taxId.value.replace(/\D/g, '').length === 8) runCheck(); else setLocked(false); });
+// 統編鎖定 8 碼數字：全形數字轉半形、自動去除空白／橫線等非數字、最多 8 碼（報備、經銷商登記、報價單客戶統編皆適用）
+function taxFix(el) {
+  const v = el.value.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '').slice(0, 8);
+  if (v !== el.value) el.value = v;
+}
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el && (el.name === 'taxId' || (el.classList && el.classList.contains('qc-taxId')))) taxFix(el);
+}, true);
+form.taxId.addEventListener('input', () => {
+  const n = form.taxId.value.length;
+  if (n === 8) { runCheck(); return; }
+  setLocked(false);
+  const box = $('#dupMsg');
+  if (n) { box.className = 'warn no'; box.textContent = '統一編號須為 8 碼數字（目前 ' + n + ' 碼）'; } else box.classList.add('hidden');
+});
 form.orgName.addEventListener('change', runCheck);
 form.city.addEventListener('change', runCheck);
 
@@ -1062,7 +1078,7 @@ function editQuote(id) {
   const mo = QD.models.map(m => '<option>' + esc(m) + '</option>').join('');
   $('#quote').innerHTML = '<button class="back" onclick="renderQuotes()">‹ 返回報價單列表</button>' +
     '<div class="card"><h2>' + (q ? '修改報價單' : '新增報價單') + '｜' + esc(QD.org) + '</h2>' +
-      '<div class="edit">' + f('name', '客戶名稱 *', c.name) + f('taxId', '客戶統一編號', c.taxId, ' inputmode="numeric" maxlength="8"') +
+      '<div class="edit">' + f('name', '客戶名稱 *', c.name) + f('taxId', '客戶統一編號', c.taxId, ' inputmode="numeric" maxlength="8" placeholder="8 碼數字"') +
       f('contact', '客戶聯繫人', c.contact) + f('phone', '客戶電話', c.phone, ' inputmode="tel"') + '</div>' +
       f('address', '客戶地址', c.address) + f('email', '客戶 E-mail', c.email, ' inputmode="email"') + '</div>' +
     '<div class="card"><h2>報價內容</h2><label class="dl">機型<select id="qModel" onchange="qModel()">' + mo + '</select></label>' +
@@ -1136,6 +1152,7 @@ async function submitQuote() {
   const data = { id: QE.id, caseId: QD.caseId, note: $('#qNote').value, lines: qCollect(),
     cust: { name: g('name'), taxId: g('taxId'), address: g('address'), contact: g('contact'), phone: g('phone'), email: g('email') } };
   if (!data.cust.name.trim()) { alert('請填寫客戶名稱'); return; }
+  if (data.cust.taxId && !/^\d{8}$/.test(data.cust.taxId)) { alert('客戶統一編號須為 8 碼數字（沒有可留空）'); return; }
   if (!data.lines.length) { alert('請至少加入一項報價內容'); return; }
   const btn = $('#qSubmit'); btn.disabled = true; btn.textContent = '送出中…';
   try {
