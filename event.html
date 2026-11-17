@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>BM 系列廚餘全去化處理機說明會｜報名</title>
 <meta property="og:title" content="BM系列廚餘全去化處理機說明會｜飯店・餐廳業者專場">
-<meta property="og:description" content="11/12（四）14:00 金典酒店 11 樓 奧林帕斯二廳｜線上報名">
-<meta property="og:image" content="https://yuyu-intl.github.io/report/poster.jpg">
+<meta property="og:description" content="御宇國際誠摯邀請｜線上報名">
 <style>
   :root{--g:#5AAF48;--b:#047EB1;--deep:#1f3b57;--gold:#a8823c;--bd:#d6e2e8;--tx:#1b2a33;--mu:#64737d;--red:#c0392b;--bg:#f6f3ee}
   *{box-sizing:border-box}
@@ -62,7 +61,7 @@
   <h1>讓廚餘處理<br><em>跟上出餐的節奏</em></h1>
   <div class="sub">BM 系列廚餘全去化處理機說明會</div>
 </div>
-<div class="poster hidden" id="poster"><img id="posterImg" alt="BM系列廚餘全去化處理機說明會 11月12日 下午14:00 金典酒店11樓 奧林帕斯二廳"></div>
+<div class="poster hidden" id="poster"><img id="posterImg" alt="BM系列廚餘全去化處理機說明會 海報"></div>
 <main>
   <div class="card">
     <h2>活動資訊</h2>
@@ -126,10 +125,13 @@ const q = new URLSearchParams(location.search);
 const EVENT = q.get('e') || '20261112', REF = (q.get('ref') || '').trim();
 const $ = s => document.querySelector(s);
 let PHONE = '0921-899-383';
-// 海報：有推薦碼時先找 poster-推薦碼.jpg/.png（經銷商個人版），找不到用 poster.jpg/.png（御宇通用版），都沒有就顯示文字標題
+// 海報（依場次）：poster-場次-推薦碼.jpg（經銷商個人版）→ poster-場次.jpg（場次通用版）→ 文字標題
+// 11/12 場次沿用舊檔名 poster-推薦碼.jpg、poster.jpg
 function loadPoster() {
   const code = REF.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-  const list = (code ? ['poster-' + code + '.jpg', 'poster-' + code + '.png'] : []).concat(['poster.jpg', 'poster.png']);
+  const pre = 'poster-' + EVENT;
+  let list = (code ? [pre + '-' + code + '.jpg', pre + '-' + code + '.png'] : []).concat([pre + '.jpg', pre + '.png']);
+  if (EVENT === '20261112') list = (code ? ['poster-' + code + '.jpg', 'poster-' + code + '.png'] : []).concat(['poster.jpg', 'poster.png']);
   (function next(i) {
     if (i >= list.length) return;
     const im = new Image();
