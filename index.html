@@ -304,6 +304,11 @@
         <div><button class="btn sm gray" id="loanCopy">複製連結給客戶</button></div>
       </div>
     </div>
+    <div class="card">
+      <h2>第一階段報價單（A4）</h2>
+      <div class="hint">選客戶指定機型與台數，產生含稅報價、三年分期、規格與水電條件的 A4 報價單，可存圖片傳 LINE、列印／存 PDF 或複製客戶連結。</div>
+      <div class="row" style="margin-top:10px"><div><button class="btn sm" onclick="openSheet()">🧾 開啟報價單產生器</button></div></div>
+    </div>
   </div>
   <div id="svc" class="hidden">
     <div class="notice">目前開放報備：<b>BM 廚餘處理機</b>。其他產品歡迎洽詢，報備功能將陸續開放。</div>
@@ -660,8 +665,10 @@ async function loadCases() {
         '<div class="row" style="margin-top:8px">' +
           (c.status === '待確認' || c.status === '有效' || (c.status === '成交' && ['簽約', '交機'].indexOf(c.stage) >= 0) ? '<div><button class="btn sm" onclick="openProgress(\'' + esc(c.id) + '\')">📝 回報進度</button></div>' : '') +
           (ME.quoteOpen && quotable(c.status) ? '<div><button class="btn sm gray" onclick="openQuote(\'' + esc(c.id) + '\')">📄 報價單</button></div>' : '') +
+          '<div><button class="btn sm gray" onclick="openSheet(\'' + esc(c.id) + '\')">🧾 初步報價</button></div>' +
         '</div>' +
       '</div>').join('') + relBox;
+    MYCASES = active;
   } catch (e) {
     box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>';
   }
@@ -819,6 +826,18 @@ $('#cCopy').onclick = () => {
   else prompt('請長按複製', calcText);
 };
 const LOAN_URL = 'https://yuyu-intl.github.io/report/loan.html';
+// 第一階段 A4 報價單：案件帶入客戶名稱、機型與台數
+const SHEET_URL = 'https://yuyu-intl.github.io/report/sheet.html';
+var MYCASES = [];
+function openSheet(id) {
+  const c = id ? MYCASES.find(x => x.id === id) : null, p = [];
+  if (c) {
+    if (c.org) p.push('to=' + encodeURIComponent(c.org));
+    const m = String(c.model || '').toUpperCase().match(/BM-?(50|99|199|400)/);
+    if (m) { const n = parseInt(c.units, 10); p.push('m=' + encodeURIComponent('BM-' + m[1] + (n > 1 ? ':' + n : ''))); }
+  }
+  openUrl(SHEET_URL + (p.length ? '?' + p.join('&') : ''));
+}
 $('#loanCopy').onclick = () => {
   const t = 'BM 系列廚餘機 三年分期方案（零頭期、36 期、年利率 3%，含稅含三年耗材）\n' + LOAN_URL;
   if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => alert('已複製，可貼到 LINE 給客戶'), () => prompt('請長按複製', t));
