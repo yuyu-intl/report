@@ -108,11 +108,11 @@
   <label class="rate">電價 <input id="kwh" type="number" step="0.1" min="0" value="3" inputmode="decimal"> 元／度</label>
   <div class="scroll">
     <table id="util">
-      <thead><tr><th>機型</th><th>平均功率<br>（kW）</th><th>每日用電<br>（度）</th><th>每月電費<br>（元）</th><th>每日用水<br>（L）</th><th>每月用水<br>（L）</th></tr></thead>
+      <thead><tr><th>機型</th><th>平均功率<br>（kW）</th><th>每日用電<br>（度）</th><th>每月電費<br>（元）</th><th>每日用水<br>（度）</th><th>每月用水<br>（度）</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
-  <p class="note">用電＝平均功率 × 24 小時；每月以 30 日計。用水依每次噴水 15 秒約 1.5 L、每小時 6 次估算（約 9 L／小時），實際依設備噴水循環與現場測試為準。BM-400 用水量於現場評估時確認。</p>
+  <p class="note">用電＝平均功率 × 24 小時；每月以 30 日計。用水依每次噴水 15 秒約 1.5 L、每小時 6 次估算（約 9 L／小時；1 度＝1,000 L），實際依設備噴水循環與現場測試為準。BM-400 用水量於現場評估時確認。</p>
 </section>
 
 <section class="card">
@@ -122,7 +122,7 @@
     <div><span class="ic">電</span><p><b>220V 單相歐規插座</b><span>建議專用迴路，靠近設備放置位置。</span></p></div>
     <div><span class="ic">位</span><p><b>放置空間 150 × 100 公分以上</b><span>平整地面，預留開蓋投料與維修空間；機身尺寸見上方「機器規格」，搬運路線需能通過機身寬度。</span></p></div>
     <div><span class="ic">排</span><p><b>排水</b><span>鄰近排水口或排水管路；截油、污水處理與排水銜接需另行評估。</span></p></div>
-    <div><span class="ic">水</span><p><b>給水</b><span>設備運轉時定時噴水，每日約 216 L；請預留給水接點。</span></p></div>
+    <div><span class="ic">水</span><p><b>給水</b><span>設備運轉時定時噴水，每日約 0.22 度；請預留給水接點。</span></p></div>
   </div>
 </section>
 
@@ -196,7 +196,7 @@ document.querySelector('#spec tbody').innerHTML = data.map(function (d) {
 function util() {
   var p = parseFloat(document.getElementById('kwh').value) || 0;
   document.querySelector('#util tbody').innerHTML = data.map(function (d) {
-    var day = d.kw * 24, w = d.water == null ? '<td class="na">待確認</td><td class="na">待確認</td>' : '<td>' + fmt(d.water) + '</td><td>' + fmt(d.water * 30) + '</td>';
+    var day = d.kw * 24, w = d.water == null ? '<td class="na">待確認</td><td class="na">待確認</td>' : '<td>' + (d.water / 1000).toFixed(2) + '</td><td>' + (d.water * 30 / 1000).toFixed(2) + '</td>';
     return '<tr><td>' + d.m + '</td><td>' + d.kw + '</td><td>' + (Math.round(day * 100) / 100) + '</td><td class="hl">' + fmt(day * 30 * p) + '</td>' + w + '</tr>';
   }).join('');
 }
