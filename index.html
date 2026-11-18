@@ -641,7 +641,12 @@ async function loadCases() {
     const head = (settled.length || pipe) ? '<div class="card"><h2>我的服務費</h2><div class="feesum">' +
       '<div><b>' + waitFee + ' 萬</b>已結算待發放</div><div><b>' + paidFee + ' 萬</b>已發放</div></div>' +
       (pipe ? '<div class="hint">另有 ' + pipe + ' 萬將於驗收且全額付清後結算。金額為未稅。</div>' : '<div class="hint">金額為未稅。</div>') + '</div>' : '';
-    box.innerHTML = head + r.cases.map(c =>
+    // 已釋出的案件不列在清單中（已解除鎖定），只在最下方摘要列出供確認
+    const released = r.cases.filter(c => c.status === '已釋出'), active = r.cases.filter(c => c.status !== '已釋出');
+    const relBox = released.length ? '<div class="card"><details><summary>已釋出 ' + released.length + ' 件（已解除鎖定，其他經銷商可報備）</summary>' +
+      '<div class="meta" style="margin-top:6px">' + released.map(c => esc(c.org) + '｜' + esc(c.id) + '｜' + esc(c.city)).join('<br>') + '</div>' +
+      '<div class="hint">如需再跟進，請重新報備（若已被其他經銷商報備則無法受理）。</div></details></div>' : '';
+    box.innerHTML = head + (active.length ? '' : '<div class="center">目前沒有進行中的案件</div>') + active.map(c =>
       '<div class="card case s-' + esc(c.status) + '">' +
         '<div class="top"><b>' + esc(c.org) + '</b><span class="badge">' + esc(c.status) + '</span></div>' +
         '<div class="meta">' + esc(c.id) + '｜' + esc(c.city) + '｜報備 ' + esc(c.time) + '<br>' +
@@ -656,7 +661,7 @@ async function loadCases() {
           (c.status === '待確認' || c.status === '有效' || (c.status === '成交' && ['簽約', '交機'].indexOf(c.stage) >= 0) ? '<div><button class="btn sm" onclick="openProgress(\'' + esc(c.id) + '\')">📝 回報進度</button></div>' : '') +
           (ME.quoteOpen && quotable(c.status) ? '<div><button class="btn sm gray" onclick="openQuote(\'' + esc(c.id) + '\')">📄 報價單</button></div>' : '') +
         '</div>' +
-      '</div>').join('');
+      '</div>').join('') + relBox;
   } catch (e) {
     box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>';
   }
