@@ -9,6 +9,7 @@
 <style>
 
 @page{size:A4;margin:0}
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 *{box-sizing:border-box;margin:0;padding:0}
 body{margin:0;font-family:"Noto Sans CJK TC","Noto Sans TC",sans-serif;color:#1d1d1b;background:#f7f6f2;font-size:10pt;line-height:1.45}
 .page{width:210mm;height:297mm;padding:7mm 9mm 6mm;display:flex;flex-direction:column;gap:2.6mm}
@@ -67,6 +68,12 @@ html{background:#e9e7e1}
 #ctl .r{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
 #ctl input[type=text]{flex:1;min-width:160px;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:15px}
 #ctl label.ck{display:inline-flex;align-items:center;gap:4px;border:1px solid #ccc;border-radius:16px;padding:5px 10px}
+#ctl .mq{display:inline-flex;align-items:center;gap:4px}
+#ctl input.qty{width:46px;padding:4px;border:1px solid #ccc;border-radius:6px;font-size:14px;text-align:center}
+/* 列數多時壓縮版面以維持一頁 A4 */
+.page.t1 th,.page.t1 td{padding:1.2mm 1.5mm} .page.t1 .sps .sp .ph{height:22mm} .page.t1 .sps.n1 .sp .ph{height:36mm} .page.t1 .sps.n2 .sp .ph{height:30mm}
+.page.t2 .sps.n4 .sp .ph{height:17mm} .page.t2 .sps.n3 .sp .ph{height:20mm} .page.t2{gap:2mm}
+tr.sum td{background:#1d2b3a!important;color:#fff;font-weight:700} tr.sum td.hl{color:#8fc0ff}
 #ctl button{padding:9px 12px;border:0;border-radius:8px;background:#1f6fd1;color:#fff;font-size:14px;font-weight:600}
 #ctl button.g{background:#06c755} #ctl button.s{background:#6b6a64}
 #ctl .hint{font-size:12px;color:#6b6a64}
@@ -92,8 +99,8 @@ html{background:#e9e7e1}
 <header><div class="tag">御宇國際｜第一階段報價（概算）</div><h1>BM 系列廚餘機 初步報價</h1>
 <p>設備＋三年耗材含稅報價、三年分期、機器規格、用電用水與安裝條件</p><div class="for" id="forLine"></div>
 <div class="chips"><span>含三年耗材</span><span>三年保固</span><span>含 5% 營業稅</span><span>零頭期 36 期分期</span></div></header>
-<section class="card"><h2>報價與分期明細 <small>新台幣元；電費以每度 3 元、24 小時運轉估算</small></h2><table>
-<thead><tr><th>機型</th><th>設備（未稅）</th><th>三年耗材（未稅）</th><th>營業稅 5%</th><th>含稅總價</th><th>分期月付<br>× 36 期</th><th>每月電費<br>(元)</th><th>每月用水<br>(度)</th></tr></thead><tbody id="priceRows"></tbody></table>
+<section class="card"><h2>報價與分期明細 <small>新台幣元；金額與水電為所列台數合計；電費以每度 3 元、24 小時運轉估算</small></h2><table>
+<thead><tr><th>機型</th><th>數量</th><th>設備（未稅）</th><th>三年耗材（未稅）</th><th>營業稅 5%</th><th>含稅總價</th><th>分期月付<br>× 36 期</th><th>每月電費<br>(元)</th><th>每月用水<br>(度)</th></tr></thead><tbody id="priceRows"></tbody></table>
 <p class="note">三年耗材＝生物芯片＋酵素一組 × 3 年，與設備綁定、與三年保固同期。分期：零頭期、36 期、年利率 3%（本息平均攤還），以合作金融機構審核為準。用水依每次噴水約 1.5 L、每小時 6 次估算（1 度＝1,000 L），實際依現場測試為準。</p></section>
 <section class="card"><h2>機器規格 <small>尺寸 寬×深×高 mm；電源 220V 單相</small></h2><div class="sps" id="specCards"></div><p class="note">全去化時間 8–14 小時；全機不鏽鋼，適應 −20°C～+50°C；處理量更大可多台並聯；油桶傾倒機選配。</p></section>
 <div class="two">
@@ -129,12 +136,18 @@ var R = 0.03 / 12, N = 36, F = R / (1 - Math.pow(1 + R, -N));
 var fm = function (n) { return Math.round(n).toLocaleString('en-US'); };
 var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
 var q = new URLSearchParams(location.search);
-var sel = (q.get('m') || '').split(',').filter(function (x) { return M.some(function (d) { return d.m === x; }); });
+// m=BM-50:2,BM-199 → 機型:台數
+var QTY = {};
+var sel = (q.get('m') || '').split(',').map(function (x) { var a = x.split(':'); var n = parseInt(a[1], 10); QTY[a[0]] = n >= 1 && n <= 99 ? n : 1; return a[0]; })
+  .filter(function (x) { return M.some(function (d) { return d.m === x; }); });
 if (!sel.length) sel = M.map(function (d) { return d.m; });
+M.forEach(function (d) { if (!QTY[d.m]) QTY[d.m] = 1; });
+var SUM = q.get('sum') === '1';
 document.getElementById('to').value = q.get('to') || '';
 document.getElementById('mods').innerHTML = M.map(function (d) {
-  return '<label class="ck"><input type="checkbox" value="' + d.m + '"' + (sel.indexOf(d.m) >= 0 ? ' checked' : '') + '> ' + d.m + '</label>';
-}).join('');
+  return '<span class="mq"><label class="ck"><input type="checkbox" value="' + d.m + '"' + (sel.indexOf(d.m) >= 0 ? ' checked' : '') + '> ' + d.m + '</label>' +
+    '<input type="number" class="qty" min="1" max="99" value="' + QTY[d.m] + '" data-m="' + d.m + '" aria-label="' + d.m + ' 台數">台</span>';
+}).join('') + '<label class="ck"><input type="checkbox" id="sum"' + (SUM ? ' checked' : '') + '> 顯示合計列（同時購買多機型）</label>';
 // 客戶連結（有 m 參數）只顯示報價單，不顯示操作列
 if (q.get('view') === '1') document.getElementById('ctl').style.display = 'none';
 function chosen() { return M.filter(function (d) { return sel.indexOf(d.m) >= 0; }); }
@@ -142,13 +155,21 @@ function render() {
   var list = chosen(), to = document.getElementById('to').value.trim();
   var d0 = new Date(), date = d0.getFullYear() + '/' + (d0.getMonth() + 1) + '/' + d0.getDate();
   document.getElementById('forLine').textContent = (to ? '報價對象：' + to + '　' : '') + '報價日期：' + date;
-  document.getElementById('priceRows').innerHTML = list.map(function (d) {
-    var tax = Math.round((d.dev + d.con) * 0.05), tot = d.dev + d.con + tax;
-    return '<tr style="--bg:' + d.bg + '"><td style="background:' + d.bg + '"><span class="tag2" style="background:' + d.c + '">' + d.m + '</span></td>' +
-      ['<td>' + fm(d.dev) + '</td>', '<td>' + fm(d.con) + '</td>', '<td>' + fm(tax) + '</td>', '<td class="hl">' + fm(tot) + '</td>', '<td class="hl">' + fm(tot * F) + '</td>',
-       '<td>' + fm(d.kw * 24 * 30 * 3) + '</td>', d.water == null ? '<td class="na">待確認</td>' : '<td>' + (d.water * 30).toFixed(2) + '</td>']
+  var S = { n: 0, dev: 0, con: 0, tax: 0, tot: 0, mon: 0, el: 0, wa: 0, waNA: false };
+  var rows = list.map(function (d) {
+    var n = QTY[d.m], dev = d.dev * n, con = d.con * n, tax = Math.round((d.dev + d.con) * 0.05) * n, tot = dev + con + tax;
+    var mon = Math.round((d.dev + d.con + Math.round((d.dev + d.con) * 0.05)) * F) * n, el = Math.round(d.kw * 24 * 30 * 3) * n;
+    S.n += n; S.dev += dev; S.con += con; S.tax += tax; S.tot += tot; S.mon += mon; S.el += el;
+    if (d.water == null) S.waNA = true; else S.wa += d.water * 30 * n;
+    return '<tr><td style="background:' + d.bg + '"><span class="tag2" style="background:' + d.c + '">' + d.m + '</span></td>' +
+      ['<td>' + n + ' 台</td>', '<td>' + fm(dev) + '</td>', '<td>' + fm(con) + '</td>', '<td>' + fm(tax) + '</td>', '<td class="hl">' + fm(tot) + '</td>', '<td class="hl">' + fm(mon) + '</td>',
+       '<td>' + fm(el) + '</td>', d.water == null ? '<td class="na">待確認</td>' : '<td>' + (d.water * 30 * n).toFixed(2) + '</td>']
         .map(function (c) { return c.replace('<td', '<td style="background:' + d.bg + '"'); }).join('') + '</tr>';
-  }).join('');
+  });
+  if (SUM && list.length > 1) rows.push('<tr class="sum"><td>合計</td><td>' + S.n + ' 台</td><td>' + fm(S.dev) + '</td><td>' + fm(S.con) + '</td><td>' + fm(S.tax) + '</td><td class="hl">' + fm(S.tot) +
+    '</td><td class="hl">' + fm(S.mon) + '</td><td>' + fm(S.el) + '</td><td>' + (S.waNA ? S.wa.toFixed(2) + '+' : S.wa.toFixed(2)) + '</td></tr>');
+  document.getElementById('priceRows').innerHTML = rows.join('');
+  var pg = document.getElementById('page'); pg.classList.toggle('t1', rows.length >= 3); pg.classList.toggle('t2', rows.length >= 5);
   var sc = document.getElementById('specCards');
   sc.className = 'sps n' + Math.min(list.length, 4);
   sc.innerHTML = list.map(function (d) {
@@ -166,16 +187,22 @@ function fit() {
   page.style.transformOrigin = 'top left';
   st.style.width = (w * s) + 'px'; st.style.height = (page.offsetHeight * s) + 'px';
 }
+function readQty() {
+  [].forEach.call(document.querySelectorAll('#mods input.qty'), function (x) { var n = parseInt(x.value, 10); QTY[x.dataset.m] = n >= 1 && n <= 99 ? n : 1; });
+  SUM = document.getElementById('sum').checked;
+}
+document.getElementById('mods').addEventListener('input', function (e) { if (e.target.classList.contains('qty')) { readQty(); render(); } });
 document.getElementById('mods').addEventListener('change', function () {
-  sel = [].slice.call(document.querySelectorAll('#mods input:checked')).map(function (x) { return x.value; });
-  if (!sel.length) { alert('請至少選一個機型'); sel = [M[0].m]; document.querySelector('#mods input').checked = true; }
+  readQty();
+  sel = [].slice.call(document.querySelectorAll('#mods input[type=checkbox][value]:checked')).map(function (x) { return x.value; });
+  if (!sel.length) { alert('請至少選一個機型'); sel = [M[0].m]; document.querySelector('#mods input[value]').checked = true; }
   render();
 });
 document.getElementById('to').addEventListener('input', render);
 window.addEventListener('resize', fit);
 function link() {
   var to = document.getElementById('to').value.trim();
-  return location.origin + location.pathname + '?view=1&m=' + encodeURIComponent(sel.join(',')) + (to ? '&to=' + encodeURIComponent(to) : '');
+  return location.origin + location.pathname + '?view=1&m=' + encodeURIComponent(sel.map(function (m) { return QTY[m] > 1 ? m + ':' + QTY[m] : m; }).join(',')) + (SUM ? '&sum=1' : '') + (to ? '&to=' + encodeURIComponent(to) : '');
 }
 function copyLink() {
   var u = link();
