@@ -1188,7 +1188,8 @@ async function quoteShare(id) {
 /* ===== 進度回報（經銷商回報初訪／場勘／環境評估 → 直接推進，不需審核） ===== */
 let PG = null;
 const PG_BADGE = { '已生效': '✅ 已推進' };
-const PG_TARGET = { '初訪': '初訪', '場勘': '場勘', '環境評估': '評估通過', '簽約': '簽約', '交機': '交機', '驗收': '驗收' };
+const VISIT_ITEM = '初訪／場勘';   // 2026-11-18：初訪與場勘合併為一個回報項目
+const PG_TARGET = { '初訪／場勘': '場勘', '初訪': '初訪', '場勘': '場勘', '環境評估': '評估通過', '簽約': '簽約', '交機': '交機', '驗收': '驗收' };
 const PG_DOC = { '簽約': '合約或訂單', '交機': '交機照片或簽收單', '驗收': '驗收單' };
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 function filesHtml(files) {
@@ -1238,9 +1239,9 @@ const ENV_ITEMS = ['220V 單相歐規插座', '150×100 公分放置空間', '�
 function pgEnv(i) { const f = $('#pgForm'); f['envNote' + i].classList.toggle('hidden', (f.querySelector('input[name=env' + i + ']:checked') || {}).value !== '不符合'); }
 function pgHint() {
   const v = ($('#pgForm').querySelector('input[name=item]:checked') || {}).value;
-  $('#pgEnv').classList.toggle('hidden', v !== '初訪');
-  $('#pgForm').note.placeholder = v === '初訪' ? '選填：其他現場狀況，例：每日廚餘約 250 公斤，預計放後場卸貨區' : '例：拜訪總務王經理，確認每日廚餘約 250 公斤；預計放置於後場卸貨區，需確認電源與排水';
-  $('#pgHint').textContent = v === '初訪' ? '初訪須完成環境評估：下列三項逐項勾選「符合／不符合」（不符合請寫原因，照片選填），送出後推進到「初訪」。'
+  $('#pgEnv').classList.toggle('hidden', v !== VISIT_ITEM);
+  $('#pgForm').note.placeholder = v === VISIT_ITEM ? '選填：其他現場狀況，例：每日廚餘約 250 公斤，預計放後場卸貨區' : '例：拜訪總務王經理，確認每日廚餘約 250 公斤；預計放置於後場卸貨區，需確認電源與排水';
+  $('#pgHint').textContent = v === VISIT_ITEM ? '初訪／場勘須完成環境評估：下列三項逐項勾選「符合／不符合」（不符合請寫原因，照片選填），送出後推進到「場勘」。'
     : v === '環境評估' ? '請附上填好的「設備安裝環境評估表」（拍照或 PDF），送出後推進到「評估通過」；御宇會將評估表轉中信技術審核（簽約前須通過）。'
     : PG_DOC[v] ? '請附上' + PG_DOC[v] + '（拍照或 PDF），日期填實際' + v + '日；送出後推進到「' + v + '」、案件改為成交，並填入案件' + v + '日。'
     : '送出後推進到「' + (PG_TARGET[v] || v) + '」。建議附上現場照片。';
@@ -1272,7 +1273,7 @@ async function submitProgress(e) {
   if (item === '環境評估' && !list.length) { alert('請附上「設備安裝環境評估表」'); return; }
   if (PG_DOC[item] && !list.length) { alert('回報「' + item + '」請附上' + PG_DOC[item]); return; }
   let env = null, envFiles = [];
-  if (item === '初訪') {
+  if (item === VISIT_ITEM) {
     env = [];
     for (let i = 0; i < ENV_ITEMS.length; i++) {
       const v = (f.querySelector('input[name=env' + i + ']:checked') || {}).value, ph = f['envPhoto' + i].files[0];
