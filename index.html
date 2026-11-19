@@ -401,7 +401,8 @@ async function api(action, data) {
 const API_READS = ['init', 'adminOverview', 'adminQuotes', 'adminProgress', 'adminSurveys', 'myCases', 'myTeam', 'check', 'progressInit', 'myEventRefs'];
 let ADM = null;
 // 說明會開關：11/12 場次已結束，關閉（說明會分頁、管理後台「說明會問卷」與提醒都不顯示；資料保留；下次辦說明會改回 true）
-const EVENT_ON = false;
+const EVENT_ON = false;      // 說明會問卷（11/12 場）相關提醒
+const EVENT_TAB_ON = true;   // 「說明會」分頁：報名連結＋報名名單
 function adminData(fresh) {
   if (fresh || !ADM || Date.now() - ADM.t > 60000) {
     const p = api('adminOverview').then(r => { if (!r.ok && ADM && ADM.p === p) ADM = null; return r; }, e => { if (ADM && ADM.p === p) ADM = null; throw e; });
@@ -845,7 +846,10 @@ $('#loanCopy').onclick = () => {
 };
 
 /* ===== 說明會：我的專屬報名連結＋透過我報名的名單 ===== */
-const EVENT_KEY = '20261112';
+// 場次清單（第一個為預設顯示）
+const EVENT_LIST = [['20261127', '11/27 日月潭'], ['20261112', '11/12 台中金典']];
+let EVENT_KEY = EVENT_LIST[0][0];
+function pickEvent(k) { EVENT_KEY = k; loadEvent(); }
 let evData = null;
 async function loadEvent() {
   show('event');
@@ -856,7 +860,8 @@ async function loadEvent() {
     if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
     evData = r;
     const e = r.event;
-    let h = '<div class="card"><h2>' + esc(e.name) + '</h2>' +
+    let h = '<div class="row" style="margin-bottom:8px">' + EVENT_LIST.map(([k, n]) => '<div><button class="btn sm' + (k === EVENT_KEY ? '' : ' gray') + '" onclick="pickEvent(\'' + k + '\')">' + n + '</button></div>').join('') + '</div>' +
+      '<div class="card"><h2>' + esc(e.name) + '</h2>' +
       '<div class="hint" style="margin-top:0">' + esc(e.time) + '｜' + esc(e.place) + '｜報名截止 ' + esc(e.deadline) + (r.closed ? '（<b style="color:var(--red)">已截止</b>）' : '') + '</div>';
     if (r.code) {
       const msg = '【誠摯邀請】' + e.name + '\n' + e.time + '\n' + e.place + '\n線上報名：' + r.lineUrl;
@@ -1414,7 +1419,7 @@ async function loadAdminQuotes(status) {
         '<div class="meta">' + (q.no ? '編號 ' + esc(q.no) + '｜' : '') + esc(q.id) + '｜案件 ' + esc(q.caseId) + '<br>' +
           '經銷商：' + esc(q.company) + '（' + (esc(q.level) || '—') + '）｜承辦 ' + esc(q.handler) + (q.handlerPhone ? ' ' + esc(q.handlerPhone) : '') + '<br>' +
           '建立 ' + esc(q.created) + (q.pre && q.pre.at ? '｜預審 ' + esc(q.pre.at) + ' ' + esc(q.pre.by) : '') + (q.reviewed ? '｜審核 ' + esc(q.reviewed) + ' ' + esc(q.reviewer) : '') +
-          (q.twoStep ? '<br><span style="color:var(--amb)">兩道審核：' + esc(q.reviewerName || '鄧昌勝') + ' 預審 → 御宇核准</span>' : '') + '</div>' +
+          (q.twoStep ? '<br><span style="color:var(--amb)">兩道審核：' + esc(q.reviewerName || '鄧昌勝') + ' 預審 → 御宇核准（御宇可直接核准）</span>' : '') + '</div>' +
         '<details class="detail"><summary>客戶資料</summary><div>統編 ' + (esc(q.cust.taxId) || '—') + '｜聯繫人 ' + (esc(q.cust.contact) || '—') +
           '｜電話 ' + (esc(q.cust.phone) || '—') + '<br>地址 ' + (esc(q.cust.address) || '—') + '｜E-mail ' + (esc(q.cust.email) || '—') + '</div></details>' +
         linesTable(q.lines) +
@@ -1426,7 +1431,7 @@ async function loadAdminQuotes(status) {
           : '<div class="meta">審核意見：' + esc(q.comment) + '</div>') : '') +
         (wait ? '<div class="alerts">' + wait + '</div>' : '') +
         (edit ? '<textarea class="aq-comment" placeholder="審核意見（退回時必填）" style="margin-top:8px"></textarea>' +
-          '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="reviewQuote(' + i + ', \'approve\')">' + (q.status === '待預審' ? '預審通過（送御宇核准）' : '核准並產生報價單') + '</button></div>' +
+          '<div class="row" style="margin-top:8px"><div><button class="btn sm" onclick="reviewQuote(' + i + ', \'approve\')">' + (q.status === '待預審' && ME.isPreReviewer ? '預審通過（送御宇核准）' : '核准並產生報價單') + '</button></div>' +
           '<div><button class="btn sm gray" onclick="reviewQuote(' + i + ', \'reject\')">退回</button></div></div>' : '') +
         (q.status === '已核准' ? '<div class="meta" style="margin-top:6px">' + (q.sealed ? '✅ 已上傳用印版 ' + esc(q.sealedAt) + (q.sealedBy ? '（' + esc(q.sealedBy) + '）' : '')
             : q.sealOld ? '舊單（用印流程上線前核准），經銷商可直接下載' : '<b style="color:var(--amb)">⏳ 待用印</b>：PDF 已寄到御宇信箱，用印後掃描或拍照上傳，經銷商才能下載') + '</div>' +
@@ -1445,7 +1450,7 @@ async function reviewQuote(i, action) {
   const card = document.querySelector('#admin .card[data-i="' + i + '"]');
   const comment = card.querySelector('.aq-comment').value;
   if (action === 'reject' && !comment.trim()) { alert('退回請填寫原因'); return; }
-  if (!confirm(action === 'approve' ? (q.status === '待預審' ? '確定預審通過「' + q.cust.name + '」的報價單？通過後送御宇（周郁菁）進行第二道核准。' : '確定核准「' + q.cust.name + '」的報價單？核准後會給正式編號、產生 PDF 並寄到御宇信箱待用印。') : '確定退回這張報價單？')) return;
+  if (!confirm(action === 'approve' ? (q.status === '待預審' && ME.isPreReviewer ? '確定預審通過「' + q.cust.name + '」的報價單？通過後送御宇（周郁菁）進行第二道核准。' : '確定核准「' + q.cust.name + '」的報價單？核准後會給正式編號、產生 PDF 並寄到御宇信箱待用印。') : '確定退回這張報價單？')) return;
   const btns = card.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
   try {
     const r = await api('adminQuoteReview', { id: q.id, action: action, comment: comment });
@@ -1681,10 +1686,13 @@ function caseCard(c) {
 function reviewBox(c) {
   const two = c.twoStep, pre = c.preReview, me = ME.isPreReviewer;
   let label = '確認報備（有效）', can = !!ME.isAdmin, note = '';
-  if (two && !pre) { label = '預審通過（送御宇確認）'; can = !!me; note = me ? '本案需兩道審核，請先預審（第一道）。' : '⏳ 等待鄧昌勝預審（第一道）'; }
+  if (two && !pre) {
+    if (me) { label = '預審通過（送御宇確認）'; can = true; note = '本案需兩道審核，請先預審（第一道）。'; }
+    else { label = '確認報備（有效，免預審）'; can = !!ME.isAdmin; note = ME.isAdmin ? '御宇負責人可直接確認，不必等鄧昌勝預審。' : '⏳ 等待鄧昌勝預審（第一道）'; }
+  }
   else if (two) { can = !me && !!ME.isAdmin; note = '✔ 已預審：' + pre + (me ? '｜⏳ 等待御宇（周郁菁）確認（第二道）' : '｜請進行第二道確認'); }
   return '<div style="background:#fffaf0;border:1px solid #f1dfb8;border-radius:8px;margin:8px 0;padding:10px">' +
-    '<div class="meta"><b>報備審核</b>' + (two ? '｜<span style="color:var(--amb)">兩道審核：鄧昌勝預審 → 御宇確認</span>' : '') + '</div>' +
+    '<div class="meta"><b>報備審核</b>' + (two ? '｜<span style="color:var(--amb)">兩道審核：鄧昌勝預審 → 御宇確認（御宇可直接確認）</span>' : '') + '</div>' +
     (note ? '<div class="meta">' + esc(note) + '</div>' : '') +
     (can ? '<textarea class="cr-comment" placeholder="審核意見（不受理時必填）" style="margin-top:6px"></textarea>' +
       '<div class="row" style="margin-top:6px"><div><button class="btn sm" onclick="reviewCase(this, \'' + esc(c.id) + '\', \'approve\')">' + label + '</button></div>' +
@@ -1823,7 +1831,7 @@ async function markPaid(agentId) {
     if (r.isViewer) viewerMode();
     if (r.adminGranted) alert('✅ 您已成為御宇國際報備系統的管理員，可使用「管理後台」。');
     if (r.isLeader) $('#teamTab').classList.remove('hidden');
-    if (EVENT_ON && (r.isAdmin || (a && a.code && a.status === '已核准'))) $('#eventTab').classList.remove('hidden');
+    if (EVENT_TAB_ON && (r.isAdmin || (a && a.code && a.status === '已核准'))) $('#eventTab').classList.remove('hidden');
     const canBonus = r.central || (r.isAdmin && r.centralAgents && r.centralAgents.length);
     if (canBonus) $('#bonusTab').classList.remove('hidden');
     fillAgent();
