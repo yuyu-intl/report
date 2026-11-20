@@ -877,7 +877,7 @@ async function loadEvent() {
     const rowsHtml = (list, showRef) => list.map((x, k) => '<div class="pending"><b>' + esc(x.company) + '</b>｜' + esc(x.name) + (x.title ? ' ' + esc(x.title) : '') + '｜' + x.people + ' 位' +
       '<div class="meta">' + esc(x.city) + '｜' + esc(x.industry) + '｜<a href="tel:' + esc(ph0(x.phone)) + '">' + esc(ph0(x.phone)) + '</a>｜' + esc(x.time) +
       (showRef ? '｜推薦 ' + esc(x.refName ? x.refName + '（' + x.ref + '）' : '無') : '') + (x.line ? '｜LINE ✓' : '') + '</div>' +
-      (showRef ? '' : x.reported ? '<div class="meta">✅ 已報備（' + esc(x.reported) + '）</div>' : '<button class="btn sm" style="margin-top:6px" onclick="evToReport(' + k + ')">轉為報備</button>') + '</div>').join('');
+      (showRef ? '' : x.reported ? '<div class="meta">✅ 已報備（' + esc(x.reported) + '）</div>' : '<div id="evr' + k + '"><button class="btn sm" style="margin-top:6px" onclick="evToReport(' + k + ')">轉為報備</button></div>') + '</div>').join('');
     h += '<div class="card"><h2>透過我報名（' + r.list.length + ' 家／' + sum(r.list) + ' 位）</h2>' +
       (r.list.length ? rowsHtml(r.list, false) : '<div class="hint">尚無人透過您的連結報名。</div>') + '</div>';
     if (r.all) h += '<div class="card"><h2>全部報名（管理員）' + r.all.length + ' 家／' + sum(r.all) + ' 位</h2>' +
@@ -886,15 +886,23 @@ async function loadEvent() {
   } catch (err) { if (err.message !== 'relogin') box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
 }
 // 說明會報名 → 一鍵轉報備（2026-11-20 簡化）：只需填統編，其餘由報名資料帶入、初訪時間免填（照一般報備查重／鎖定／審核）
-async function evToReport(k) {
+function evToReport(k) {
   const x = evData.list[k];
   if (!canReport()) { openTab('form'); return; }
   if (ME.central) { evToForm(k); return; }   // 集中報備須選承辦業務，改用完整報備表
-  let tax = prompt('「' + x.company + '」轉為報備\n只需填寫 8 碼統一編號，其餘資料由說明會報名帶入，初訪時間免填。', String(x.taxId || '').replace(/\D/g, ''));
-  if (tax == null) return;
-  tax = tax.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '');
+  const box = $('#evr' + k); if (!box) return;
+  // LINE 內建瀏覽器不支援 prompt()，改在名單上直接顯示統編輸入框
+  box.innerHTML = '<div class="hint" style="margin:6px 0 4px">只需填寫 8 碼統一編號，其餘資料由說明會報名帶入，初訪時間免填。</div>' +
+    '<div class="row"><div><input type="text" class="qc-taxId" id="evTax' + k + '" inputmode="numeric" maxlength="8" placeholder="統一編號 8 碼" value="' + esc(String(x.taxId || '').replace(/\D/g, '')) + '"></div>' +
+    '<div><button class="btn sm" id="evGo' + k + '" onclick="evSubmit(' + k + ')">送出報備</button></div></div>';
+  $('#evTax' + k).focus();
+}
+async function evSubmit(k) {
+  const x = evData.list[k], t = $('#evTax' + k), b = $('#evGo' + k);
+  const tax = t.value.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '');
   if (!/^\d{8}$/.test(tax)) { alert('統一編號須為 8 碼數字'); return; }
   if (!taxOk(tax)) { alert('統一編號檢查碼不正確，請至經濟部商工登記查詢核對。統編必須正確才能鎖定保護期。'); return; }
+  b.disabled = true; b.textContent = '送出中…';
   try {
     const r = await api('eventReport', { event: EVENT_KEY, phone: x.phone, company: x.company, taxId: tax,
       agentName: form.agentName.value, agentPhone: form.agentPhone.value });
@@ -906,6 +914,7 @@ async function evToReport(k) {
     alert((r.accepted ? '✅ ' : '⚠️ ') + r.message);
     loadEvent();
   } catch (err) { if (err.message !== 'relogin') alert('連線失敗，請稍後再試'); }
+  finally { if (b.isConnected) { b.disabled = false; b.textContent = '送出報備'; } }
 }
 // 完整報備表（集中報備、或報名資料不足時）：帶入報備表，經銷商補齊後送出
 function evToForm(k) {
