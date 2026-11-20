@@ -885,8 +885,30 @@ async function loadEvent() {
     box.innerHTML = h;
   } catch (err) { if (err.message !== 'relogin') box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
 }
-// 說明會報名 → 一鍵轉報備：帶入報備表，經銷商補統編等欄位後送出（照一般報備查重／審核）
-function evToReport(k) {
+// 說明會報名 → 一鍵轉報備（2026-11-20 簡化）：只需填統編，其餘由報名資料帶入、初訪時間免填（照一般報備查重／鎖定／審核）
+async function evToReport(k) {
+  const x = evData.list[k];
+  if (!canReport()) { openTab('form'); return; }
+  if (ME.central) { evToForm(k); return; }   // 集中報備須選承辦業務，改用完整報備表
+  let tax = prompt('「' + x.company + '」轉為報備\n只需填寫 8 碼統一編號，其餘資料由說明會報名帶入，初訪時間免填。', String(x.taxId || '').replace(/\D/g, ''));
+  if (tax == null) return;
+  tax = tax.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '');
+  if (!/^\d{8}$/.test(tax)) { alert('統一編號須為 8 碼數字'); return; }
+  if (!taxOk(tax)) { alert('統一編號檢查碼不正確，請至經濟部商工登記查詢核對。統編必須正確才能鎖定保護期。'); return; }
+  try {
+    const r = await api('eventReport', { event: EVENT_KEY, phone: x.phone, company: x.company, taxId: tax,
+      agentName: form.agentName.value, agentPhone: form.agentPhone.value });
+    if (!r.ok) {
+      if (/請填寫/.test(r.message || '') && confirm(r.message + '\n報名資料不足，是否改用完整報備表補填？')) evToForm(k);
+      else alert(r.message || '送出失敗');
+      return;
+    }
+    alert((r.accepted ? '✅ ' : '⚠️ ') + r.message);
+    loadEvent();
+  } catch (err) { if (err.message !== 'relogin') alert('連線失敗，請稍後再試'); }
+}
+// 完整報備表（集中報備、或報名資料不足時）：帶入報備表，經銷商補齊後送出
+function evToForm(k) {
   const x = evData.list[k], f = $('#form');
   openTab('form');
   if (!canReport() || !f) return;
