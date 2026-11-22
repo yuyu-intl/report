@@ -1698,7 +1698,8 @@ function caseCard(c) {
     '</details>' +
     (c.status === '待確認' ? reviewBox(c) : '') +
     (quotable(c.status) ? '<button class="btn sm gray" style="margin-top:8px" onclick="openQuote(\'' + esc(c.id) + '\', \'admin\')">📄 報價單</button>' : '') +
-    (c.status === '重複(未受理)' ? '<div class="meta">' + esc(c.reply) + '</div>' :
+    // 待確認：只用上方「報備審核」按鈕，按下即生效，不需要再按「儲存」；審核後才顯示階段／日期編輯
+    (c.status === '重複(未受理)' ? '<div class="meta">' + esc(c.reply) + '</div>' : c.status === '待確認' ? '' :
     '<div class="edit" data-id="' + esc(c.id) + '" data-level="' + esc(c.level) + '" data-up="' + (c.uplineId ? 1 : '') + '">' +
       '<label class="dl">階段<select class="e-stage">' + opt(STAGES.concat(['未成交']), c.stage) + '</select></label>' +
       '<label class="dl">狀態<select class="e-status">' + opt(['待確認', '有效', '成交', '未成交', '已釋出', '無效'], c.status) + '</select></label>' +
@@ -1718,12 +1719,12 @@ function reviewBox(c) {
   const two = c.twoStep, pre = c.preReview, me = ME.isPreReviewer;
   let label = '確認報備（有效）', can = !!ME.isAdmin, note = '';
   if (two && !pre) {
-    if (me) { label = '預審通過（送御宇確認）'; can = true; note = '本案需兩道審核，請先預審（第一道）。'; }
+    if (me) { label = '確認報備（有效）'; can = true; note = ''; }
     else { label = '確認報備（有效，免預審）'; can = !!ME.isAdmin; note = ME.isAdmin ? '御宇負責人可直接確認，不必等鄧昌勝預審。' : '⏳ 等待鄧昌勝預審（第一道）'; }
   }
-  else if (two) { can = !me && !!ME.isAdmin; note = '✔ 已預審：' + pre + (me ? '｜⏳ 等待御宇（周郁菁）確認（第二道）' : '｜請進行第二道確認'); }
+  else if (two) { can = me || !!ME.isAdmin; note = '✔ 已預審：' + pre; }
   return '<div style="background:#fffaf0;border:1px solid #f1dfb8;border-radius:8px;margin:8px 0;padding:10px">' +
-    '<div class="meta"><b>報備審核</b>' + (two ? '｜<span style="color:var(--amb)">兩道審核：鄧昌勝預審 → 御宇確認（御宇可直接確認）</span>' : '') + '</div>' +
+    '<div class="meta"><b>報備審核</b>' + (two ? '｜<span style="color:var(--amb)">包羅報備：鄧昌勝或御宇任一位確認即生效</span>' : '') + '</div>' +
     (note ? '<div class="meta">' + esc(note) + '</div>' : '') +
     (can ? '<textarea class="cr-comment" placeholder="審核意見（不受理時必填）" style="margin-top:6px"></textarea>' +
       '<div class="row" style="margin-top:6px"><div><button class="btn sm" onclick="reviewCase(this, \'' + esc(c.id) + '\', \'approve\')">' + label + '</button></div>' +
