@@ -600,7 +600,7 @@ function wasteCalc() {
   const month = daily * days, perKg = month > 0 && fee > 0 ? fee / month : 0;
   const sm = daily > 0 ? suggestModel(daily) : null;
   $('#fWasteCalc').textContent = daily ? '月處理量 ' + nf(month) + ' kg' + (perKg ? '｜每公斤處理費 ' + nf(perKg, 2) + ' 元' : '') +
-    '｜建議機型 ' + sm.name + '（日量 × 1.5 ＝ ' + nf(sm.need, 1) + ' kg）' : '';
+    '｜建議機型 ' + sm.name + '（' + (sm.multi ? '每台' : '') + '可處理至 ' + sm.max + ' kg／日）' : '';
 }
 ['wasteDaily', 'workDays', 'monthlyFee'].forEach(n => form[n].addEventListener('input', wasteCalc));
 form.visitDate.min = todayStr();
@@ -796,12 +796,12 @@ function copyInvite() {
 }
 
 /* ===== 廚餘量試算：日處理量 × 工作天 → 月處理量；月處理費 ÷ 月處理量 → 每公斤處理費 ===== */
-const CALC_MODELS = [['BM-50', 50], ['BM-99', 99], ['BM-199', 199], ['BM-400', 400]];
-// 建議機型：以日處理量 × 1.5 倍選型（保留尖峰餘裕），取每日最大處理量 ≥ 該值的最小機型；超過 400 kg 以 BM-400 台數計
-const CALC_SAFETY = 1.5;
+// [機型, 額定日處理量, 可處理上限＝額定（以 50／100／200／400 計）× 1.5]
+const CALC_MODELS = [['BM-50', 50, 75], ['BM-99', 99, 150], ['BM-199', 199, 300], ['BM-400', 400, 600]];
+// 建議機型：機器可處理到額定量的 1.5 倍，取「可處理上限 ≥ 日處理量」的最小機型；超過 600 kg 以 BM-400 台數計
 function suggestModel(daily) {
-  const need = daily * CALC_SAFETY, m = CALC_MODELS.find(x => x[1] >= need);
-  return { need: need, name: m ? m[0] : 'BM-400 × ' + Math.ceil(need / 400) + ' 台', cap: m ? m[1] : 400, multi: !m };
+  const m = CALC_MODELS.find(x => x[2] >= daily);
+  return { name: m ? m[0] : 'BM-400 × ' + Math.ceil(daily / 600) + ' 台', cap: m ? m[1] : 400, max: m ? m[2] : 600, multi: !m };
 }
 const nf = (n, d) => Number(n).toLocaleString('zh-TW', { maximumFractionDigits: d || 0 });
 let calcText = '';
@@ -815,7 +815,7 @@ function calcRun() {
   let model = '';
   if (daily > 0) {
     const sm = suggestModel(daily);
-    model = '建議機型：' + sm.name + '（以日處理量 × 1.5 倍 ＝ ' + nf(sm.need, 1) + ' kg 選型；' + (sm.multi ? '每台' : '') + '每日最大處理量 ' + sm.cap + ' kg）';
+    model = '建議機型：' + sm.name + '（' + (sm.multi ? '每台' : '') + '額定 ' + sm.cap + ' kg／日，可處理至 1.5 倍約 ' + sm.max + ' kg／日）';
   }
   $('#cModel').textContent = model ? model + '。實際機型仍須現場評估。' : '';
   $('#cModel').style.display = model ? '' : 'none';
