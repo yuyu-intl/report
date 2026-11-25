@@ -917,12 +917,13 @@ async function loadEvent() {
     h += '</div>';
     const sum = list => list.reduce((s, x) => s + x.people, 0);
     const rowsHtml = (list, showRef) => list.map((x, k) => '<div class="pending"><b>' + esc(x.company) + '</b>｜' + esc(x.name) + (x.title ? ' ' + esc(x.title) : '') + '｜' + x.people + ' 位' +
-      '<div class="meta">' + esc(x.city) + '｜' + esc(x.industry) + '｜<a href="tel:' + esc(ph0(x.phone)) + '">' + esc(ph0(x.phone)) + '</a>｜' + esc(x.time) +
+      '<div class="meta">' + esc(x.city) + '｜' + esc(x.industry) + '｜' + (x.phone ? '<a href="tel:' + esc(ph0(x.phone)) + '">' + esc(ph0(x.phone)) + '</a>｜' : '') + esc(x.time) +
       (showRef ? '｜推薦 ' + esc(x.refName ? x.refName + '（' + x.ref + '）' : '無') : '') + (x.line ? '｜LINE ✓' : '') + '</div>' +
       (showRef ? '' : x.reported ? '<div class="meta">✅ 已報備（' + esc(x.reported) + '）</div>' : '<div id="evr' + k + '"><button class="btn sm" style="margin-top:6px" onclick="evToReport(' + k + ')">轉為報備</button></div>') + '</div>').join('');
     h += '<div class="card"><h2>透過我報名（' + r.list.length + ' 家／' + sum(r.list) + ' 位）</h2>' +
       (r.list.length ? rowsHtml(r.list, false) : '<div class="hint">尚無人透過您的連結報名。</div>') + '</div>';
-    if (r.all) h += '<div class="card"><h2>全部報名（管理員）' + r.all.length + ' 家／' + sum(r.all) + ' 位</h2>' +
+    if (r.all) h += '<div class="card"><h2>全部報名（' + r.all.length + ' 家／' + sum(r.all) + ' 位）</h2>' +
+      (ME.isAdmin || ME.isViewer ? '' : '<div class="hint">所有經銷商的報名名單，供了解出席業者與避免重複邀約；聯絡電話僅推薦經銷商與御宇可見。</div>') +
       (r.all.length ? rowsHtml(r.all, true) : '<div class="hint">尚無報名。</div>') + '</div>';
     box.innerHTML = h;
   } catch (err) { if (err.message !== 'relogin') box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
