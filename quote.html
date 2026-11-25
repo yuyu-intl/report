@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>BM 系列廚餘機｜初步報價</title>
-<meta property="og:title" content="BM 系列廚餘機｜初步報價與水電資料">
+<title>BM 系列廚餘機｜初步採購評估表</title>
+<meta property="og:title" content="BM 系列廚餘機｜初步採購評估表（報價、水電資料）">
 <meta property="og:description" content="設備＋三年耗材含稅報價、用電用水估算與安裝現場條件">
 <style>
   :root{--blue:#1f6fd1;--blue-soft:#e8f1fc;--ink:#1d1d1b;--sub:#6b6a64;--line:#e6e4dd;--bg:#f7f6f2;--ok:#1a7f4b;--warn:#a15c00}
@@ -65,8 +65,8 @@
 <div class="wrap">
 
 <header>
-  <div class="tag">御宇國際｜第一階段報價（概算）</div>
-  <h1>BM 系列廚餘機 初步報價</h1>
+  <div class="tag">御宇國際｜第一階段採購評估（概算）</div>
+  <h1>BM 系列廚餘機 初步採購評估表</h1>
   <p>設備＋三年耗材含稅總價，附各機型用電、用水估算與安裝現場條件，供貴單位初步評估；正式報價於現場評估後提供。</p>
   <div class="chips"><span>含三年耗材</span><span>三年保固</span><span>含 5% 營業稅</span><span>可三年分期</span></div>
   <div class="for" id="forBox"></div>
@@ -137,7 +137,7 @@
     <li><b>付款</b><span>簽約 50%／交機 40%／驗收 10%</span></li>
     <li><b>交期</b><span>簽約並付第一期款後 2 個月內交機</span></li>
     <li><b>驗收</b><span>交機日起 1 週內完成運作測試與驗收</span></li>
-    <li><b>保固</b><span>驗收完成日起 3 年</span></li>
+    <li><b>保固</b><span>安裝日起 3 年</span></li>
     <li><b>耗材</b><span>原廠指定生物芯片＋酵素，三年價格鎖定</span></li>
     <li><b>分期</b><span>可選零頭期 36 期（年利率 3%）</span></li>
   </ul>
@@ -147,7 +147,7 @@
 <section class="card">
   <h2>導入流程</h2>
   <ol class="steps">
-    <li class="now">第一階段：初步報價（本頁）</li>
+    <li class="now">第一階段：初步採購評估（本頁）</li>
     <li>免費現場評估：確認電源、空間、排水與給水</li>
     <li>第二階段：正式報價單（御宇國際用印）</li>
     <li>簽約、交機（2 個月內）、驗收（1 週內）</li>
@@ -157,7 +157,7 @@
 <a class="cta" href="https://line.me/R/ti/p/@715opdxw">LINE 洽詢／預約免費現場評估</a>
 
 <footer>
-  ※ 本頁為第一階段概算報價，正式金額與交易條件以御宇國際核准用印之報價單為準。設備價格未含特殊配管、水電或土木工程；用電、用水為估算值，實際依現場條件與運轉情形而定。適用廚餘須依規範分類。<br>
+  ※ 本頁為第一階段採購評估（概算），正式金額與交易條件以御宇國際核准用印之報價單為準。設備價格未含特殊配管、水電或土木工程；用電、用水為估算值，實際依現場條件與運轉情形而定。適用廚餘須依規範分類。<br>
   御宇國際企業有限公司
 </footer>
 
@@ -207,7 +207,7 @@ document.getElementById('uses').innerHTML = data.map(function (d) {
 }).join('');
 // 報價對象：?to=客戶名稱
 var to = new URLSearchParams(location.search).get('to');
-if (to) document.getElementById('forBox').textContent = '報價對象：' + to.slice(0, 40);
+if (to) document.getElementById('forBox').textContent = '評估對象：' + to.slice(0, 40);
 </script>
 </body>
 </html>
