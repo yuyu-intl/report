@@ -125,6 +125,7 @@
 <nav class="tabs hidden" id="tabs">
   <button class="tab on" data-t="form">新增報備</button>
   <button class="tab" data-t="list">我的案件</button>
+  <button class="tab hidden" data-t="locked" id="lockedTab">已報備查詢</button>
   <button class="tab" data-t="svc">產品服務</button>
   <button class="tab" data-t="calc">廚餘試算</button>
   <button class="tab hidden" data-t="event" id="eventTab">說明會</button>
@@ -267,6 +268,8 @@
 
   <!-- 我的案件 -->
   <div id="list" class="hidden"></div>
+  <!-- 已報備查詢：鎖定中的業者名單（報備前初步查重） -->
+  <div id="locked" class="hidden"></div>
 
   <!-- 管理後台 -->
   <div id="event" class="hidden"></div>
@@ -412,13 +415,47 @@ function adminData(fresh) {
 }
 
 function show(id) {
-  ['loading', 'reg', 'form', 'result', 'list', 'svc', 'calc', 'event', 'team', 'bonus', 'quote', 'progress', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
+  ['loading', 'reg', 'form', 'result', 'list', 'locked', 'svc', 'calc', 'event', 'team', 'bonus', 'quote', 'progress', 'admin'].forEach(x => $('#' + x).classList.toggle('hidden', x !== id));
   window.scrollTo(0, 0);
+}
+/* ===== 已報備查詢：所有經銷商報備中（鎖定中）的業者，僅名稱／縣市／統編／鎖定期限 ===== */
+let LOCKED = null;
+async function loadLocked(fresh) {
+  show('locked');
+  const box = $('#locked');
+  if (!LOCKED || fresh) {
+    box.innerHTML = '<div class="center">讀取中…</div>';
+    try {
+      const r = await api('lockedList', {});
+      if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
+      LOCKED = r;
+    } catch (e) { if (e.message !== 'relogin') box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; return; }
+  }
+  box.innerHTML = '<div class="card"><h2>已報備業者查詢</h2>' +
+    '<div class="hint">報備前可先查詢，避免重複開發。名單為目前鎖定中的業者（共 ' + LOCKED.list.length + ' 家），只顯示機構名稱、縣市、統編與鎖定期限，不顯示聯絡資料與報備人。「總部（全國）」表示該集團全國鎖定，含各地分公司／分店。</div>' +
+    '<input type="search" id="lockQ" placeholder="輸入機構名稱、統編或縣市" style="margin-top:10px" autocomplete="off">' +
+    '<div class="hint" id="lockCount"></div>' +
+    '<div class="hint">資料時間：' + esc(LOCKED.updated) + '　<a href="javascript:loadLocked(true)">重新整理</a>｜實際是否可報備，以送出報備時系統查重為準。</div></div>' +
+    '<div id="lockRows"></div>';
+  $('#lockQ').addEventListener('input', lockedRender);
+  lockedRender();
+}
+function lockedRender() {
+  const q = ($('#lockQ').value || '').replace(/\s/g, '').replace(/台/g, '臺').toLowerCase();
+  const norm = x => String(x || '').replace(/\s/g, '').replace(/台/g, '臺').toLowerCase();
+  const rows = LOCKED.list.filter(x => !q || norm(x.name).includes(q) || norm(x.city).includes(q) || String(x.taxId).includes(q));
+  $('#lockCount').textContent = !q ? '' : rows.length ? '找到 ' + rows.length + ' 家已被報備鎖定' : '名單中查無此業者，可以報備（仍以送出時查重為準）';
+  $('#lockRows').innerHTML = rows.slice(0, 300).map(x =>
+    '<div class="card" style="padding:10px 14px;margin-bottom:8px"><b>' + esc(x.name) + '</b>' + (x.mine ? ' <span style="font-size:12px;color:var(--g)">（我的）</span>' : '') +
+    '<div class="meta" style="margin-top:2px">' + esc(x.city) + (x.taxId ? '｜統編 ' + esc(x.taxId) : '') + '｜' +
+    (x.until === '已成交' ? '已成交（永久鎖定）' : '鎖定至 ' + esc(x.until)) + (x.pending ? '（審核中）' : '') + '</div></div>').join('') +
+    (rows.length > 300 ? '<div class="center">結果較多，請輸入關鍵字縮小範圍</div>' : '');
 }
 function openTab(name) {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === name));
   const on = document.querySelector('.tab.on'); if (on && on.scrollIntoView) on.scrollIntoView({ inline: 'center', block: 'nearest' });
   if (name === 'list') loadCases();
+  else if (name === 'locked') loadLocked();
   else if (name === 'admin') loadAdmin();
   else if (name === 'team') loadTeam();
   else if (name === 'event') loadEvent();
@@ -1868,6 +1905,7 @@ async function markPaid(agentId) {
     if (r.isViewer) viewerMode();
     if (r.adminGranted) alert('✅ 您已成為御宇國際報備系統的管理員，可使用「管理後台」。');
     if (r.isLeader) $('#teamTab').classList.remove('hidden');
+    if (r.isAdmin || r.isViewer || (a && a.status === '已核准')) $('#lockedTab').classList.remove('hidden');
     if (EVENT_TAB_ON && (r.isAdmin || (a && a.code && a.status === '已核准'))) $('#eventTab').classList.remove('hidden');
     const canBonus = r.central || (r.isAdmin && r.centralAgents && r.centralAgents.length);
     if (canBonus) $('#bonusTab').classList.remove('hidden');
@@ -1878,7 +1916,7 @@ async function markPaid(agentId) {
       else if (r.setup) { showReg(); return; }
     }
     if (!canReport() && !['svc', 'calc'].includes(tab)) { showReg(); return; }
-    openTab(['list', 'svc', 'calc'].includes(tab) || (tab === 'admin' && (r.isAdmin || r.isViewer)) || (tab === 'team' && r.isLeader) || (tab === 'event' && !$('#eventTab').classList.contains('hidden')) || (tab === 'bonus' && canBonus) ? tab : 'form');
+    openTab(['list', 'svc', 'calc'].includes(tab) || (tab === 'locked' && !$('#lockedTab').classList.contains('hidden')) || (tab === 'admin' && (r.isAdmin || r.isViewer)) || (tab === 'team' && r.isLeader) || (tab === 'event' && !$('#eventTab').classList.contains('hidden')) || (tab === 'bonus' && canBonus) ? tab : 'form');
   } catch (e) {
     if (e.message !== 'relogin') $('#loading').textContent = '初始化失敗：' + e.message + '（請關閉後重新開啟）';
   }
