@@ -308,9 +308,9 @@
       </div>
     </div>
     <div class="card">
-      <h2>第一階段報價單（A4）</h2>
-      <div class="hint">選客戶指定機型與台數，產生含稅報價、三年分期、規格與水電條件的 A4 報價單，可存圖片傳 LINE、列印／存 PDF 或複製客戶連結。</div>
-      <div class="row" style="margin-top:10px"><div><button class="btn sm" onclick="openSheet()">🧾 開啟報價單產生器</button></div></div>
+      <h2>初步採購評估表（A4）</h2>
+      <div class="hint">選客戶指定機型與台數，產生含稅報價、三年分期、規格與水電條件的 A4 初步採購評估表，可存圖片傳 LINE、列印／存 PDF 或複製客戶連結。</div>
+      <div class="row" style="margin-top:10px"><div><button class="btn sm" onclick="openSheet()">🧾 開啟採購評估表</button></div></div>
     </div>
   </div>
   <div id="svc" class="hidden">
@@ -703,7 +703,7 @@ async function loadCases() {
         '<div class="row" style="margin-top:8px">' +
           (c.status === '待確認' || c.status === '有效' || (c.status === '成交' && ['簽約', '交機'].indexOf(c.stage) >= 0) ? '<div><button class="btn sm" onclick="openProgress(\'' + esc(c.id) + '\')">📝 回報進度</button></div>' : '') +
           (ME.quoteOpen && quotable(c.status) ? '<div><button class="btn sm gray" onclick="openQuote(\'' + esc(c.id) + '\')">📄 報價單</button></div>' : '') +
-          '<div><button class="btn sm gray" onclick="openSheet(\'' + esc(c.id) + '\')">🧾 初步報價</button></div>' +
+          '<div><button class="btn sm gray" onclick="openSheet(\'' + esc(c.id) + '\')">🧾 採購評估表</button></div>' +
         '</div>' +
       '</div>').join('') + relBox;
     MYCASES = active;
