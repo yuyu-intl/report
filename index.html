@@ -1493,7 +1493,7 @@ async function loadAdminQuotes(status) {
         '<div class="meta">' + (q.no ? '編號 ' + esc(q.no) + '｜' : '') + esc(q.id) + '｜案件 ' + esc(q.caseId) + '<br>' +
           '經銷商：' + esc(q.company) + '（' + (esc(q.level) || '—') + '）｜承辦 ' + esc(q.handler) + (q.handlerPhone ? ' ' + esc(q.handlerPhone) : '') + '<br>' +
           '建立 ' + esc(q.created) + (q.pre && q.pre.at ? '｜預審 ' + esc(q.pre.at) + ' ' + esc(q.pre.by) : '') + (q.reviewed ? '｜審核 ' + esc(q.reviewed) + ' ' + esc(q.reviewer) : '') +
-          (q.twoStep ? '<br><span style="color:var(--amb)">兩道審核：' + esc(q.reviewerName || '鄧昌勝') + ' 預審 → 御宇核准（御宇可直接核准）</span>' : '') + '</div>' +
+          (q.twoStep ? '<br><span style="color:var(--amb)">兩道審核：' + esc(q.reviewerName || '鄧昌勝') + ' 預審 → 御宇核准</span>' : '') + '</div>' +
         '<details class="detail"><summary>客戶資料</summary><div>統編 ' + (esc(q.cust.taxId) || '—') + '｜聯繫人 ' + (esc(q.cust.contact) || '—') +
           '｜電話 ' + (esc(q.cust.phone) || '—') + '<br>地址 ' + (esc(q.cust.address) || '—') + '｜E-mail ' + (esc(q.cust.email) || '—') + '</div></details>' +
         linesTable(q.lines) +
@@ -1762,12 +1762,12 @@ function reviewBox(c) {
   const two = c.twoStep, pre = c.preReview, me = ME.isPreReviewer;
   let label = '確認報備（有效）', can = !!ME.isAdmin, note = '';
   if (two && !pre) {
-    if (me) { label = '確認報備（有效）'; can = true; note = ''; }
-    else { label = '確認報備（有效，免預審）'; can = !!ME.isAdmin; note = ME.isAdmin ? '御宇負責人可直接確認，不必等鄧昌勝預審。' : '⏳ 等待鄧昌勝預審（第一道）'; }
+    if (me) { label = '預審通過（送御宇確認）'; can = true; note = '本案需兩道審核，請先預審（第一道），通過後送御宇（周郁菁）確認。'; }
+    else { can = false; note = '⏳ 等待鄧昌勝預審（第一道），預審通過後才輪到御宇確認。'; }
   }
-  else if (two) { can = me || !!ME.isAdmin; note = '✔ 已預審：' + pre; }
+  else if (two) { can = !me && !!ME.isAdmin; note = '✔ 已預審：' + pre + (me ? '｜⏳ 等待御宇（周郁菁）確認（第二道）' : ''); }
   return '<div style="background:#fffaf0;border:1px solid #f1dfb8;border-radius:8px;margin:8px 0;padding:10px">' +
-    '<div class="meta"><b>報備審核</b>' + (two ? '｜<span style="color:var(--amb)">包羅報備：鄧昌勝或御宇任一位確認即生效</span>' : '') + '</div>' +
+    '<div class="meta"><b>報備審核</b>' + (two ? '｜<span style="color:var(--amb)">兩道審核：鄧昌勝預審 → 御宇確認後生效</span>' : '') + '</div>' +
     (note ? '<div class="meta">' + esc(note) + '</div>' : '') +
     (can ? '<textarea class="cr-comment" placeholder="審核意見（不受理時必填）" style="margin-top:6px"></textarea>' +
       '<div class="row" style="margin-top:6px"><div><button class="btn sm" onclick="reviewCase(this, \'' + esc(c.id) + '\', \'approve\')">' + label + '</button></div>' +
