@@ -404,7 +404,7 @@ async function api(action, data) {
 const API_READS = ['init', 'adminOverview', 'adminQuotes', 'adminProgress', 'adminSurveys', 'myCases', 'myTeam', 'check', 'progressInit', 'myEventRefs'];
 let ADM = null;
 // 說明會開關：11/12 場次已結束，關閉（說明會分頁、管理後台「說明會問卷」與提醒都不顯示；資料保留；下次辦說明會改回 true）
-const EVENT_ON = false;      // 說明會問卷（11/12 場）相關提醒
+const EVENT_ON = true;       // 說明會會後問卷＋預約場勘（管理後台按鈕與待聯繫提醒）
 const EVENT_TAB_ON = true;   // 「說明會」分頁：報名連結＋報名名單
 function adminData(fresh) {
   if (fresh || !ADM || Date.now() - ADM.t > 60000) {
@@ -1420,24 +1420,27 @@ async function loadAdminProgress() {
 }
 
 /* ===== 說明會問卷＋預約場勘（御宇管理員） ===== */
-let SV = { list: [], statuses: [], only: false };
-async function loadAdminSurveys(only) {
+let SV = { list: [], statuses: [], only: false, event: '20261127' };
+const SURVEY_LIST = [['20261127', '11/27 日月潭'], ['20261112', '11/12 台中金典']];
+async function loadAdminSurveys(only, ev) {
   if (only != null) SV.only = only;
+  if (ev) SV.event = ev;
   const box = $('#admin');
   box.innerHTML = '<div class="center">讀取中…</div>';
   window.scrollTo(0, 0);
   try {
-    const r = await api('adminSurveys', { event: '20261112' });
+    const r = await api('adminSurveys', { event: SV.event });
     if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
     SV.list = r.list; SV.statuses = r.statuses;
     const st = r.stat, list = SV.only ? r.list.filter(x => x.book) : r.list;
     let h = '<button class="back" onclick="loadAdmin()">‹ 返回管理後台</button>' +
+      '<div class="row" style="margin-bottom:8px">' + SURVEY_LIST.map(([k, n]) => '<div><button class="btn sm' + (k === SV.event ? '' : ' gray') + '" onclick="loadAdminSurveys(null, \'' + k + '\')">' + n + '</button></div>').join('') + '</div>' +
       '<div class="card"><h2>說明會問卷（' + st.total + '）</h2><div class="stats">' +
       '<div><b>' + st.total + '</b>填寫</div><div><b>' + st.book + '</b>預約場勘</div>' +
       '<div><b' + (st.pending ? ' style="color:var(--red)"' : '') + '>' + st.pending + '</b>待聯繫</div><div><b>' + (st.avg || '—') + '</b>平均滿意度</div></div>' +
       '<div class="row" style="margin-top:10px"><div><button class="btn sm' + (SV.only ? ' gray' : '') + '" onclick="loadAdminSurveys(false)">全部</button></div>' +
       '<div><button class="btn sm' + (SV.only ? '' : ' gray') + '" onclick="loadAdminSurveys(true)">只看預約場勘</button></div></div>' +
-      '<div class="hint">問卷連結：https://liff.line.me/' + LIFF_ID + '?survey=20261112（LINE）／https://yuyu-intl.github.io/report/survey.html（一般網頁）</div></div>';
+      '<div class="hint">問卷連結：https://yuyu-intl.github.io/report/survey.html?e=' + SV.event + '</div></div>';
     if (!list.length) h += '<div class="center">尚無資料</div>';
     h += list.map(x => {
       const i = SV.list.indexOf(x), hot = x.book && x.status === '待聯繫';
@@ -1462,7 +1465,7 @@ async function loadAdminSurveys(only) {
 }
 async function saveSurvey(i) {
   const x = SV.list[i];
-  const r = await api('adminSurveyUpdate', { event: '20261112', phone: x.phone, status: $('#svs' + i).value, owner: $('#svo' + i).value, memo: $('#svm' + i).value });
+  const r = await api('adminSurveyUpdate', { event: SV.event, phone: x.phone, status: $('#svs' + i).value, owner: $('#svo' + i).value, memo: $('#svm' + i).value });
   if (!r.ok) { alert(r.message); return; }
   loadAdminSurveys();
 }
