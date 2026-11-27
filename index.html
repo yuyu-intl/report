@@ -256,7 +256,7 @@
     </div>
 
     <button class="btn" id="submitBtn" type="submit">送出報備</button>
-    <div class="hint" style="text-align:center;margin-top:8px">同一統編＋同一縣市以最先報備者為準，鎖定保護期 90 天；選「總部」者該統編全國鎖定</div>
+    <div class="hint" style="text-align:center;margin-top:8px">同一統編＋同一縣市以最先報備者為準，報備有效後持續鎖定（不限期，御宇釋出前他人無法報備）；選「總部」者該統編全國鎖定</div>
   </form>
 
   <!-- 送出結果 -->
@@ -448,7 +448,7 @@ function lockedRender() {
   $('#lockRows').innerHTML = rows.slice(0, 300).map(x =>
     '<div class="card" style="padding:10px 14px;margin-bottom:8px"><b>' + esc(x.name) + '</b>' + (x.mine ? ' <span style="font-size:12px;color:var(--g)">（我的）</span>' : '') +
     '<div class="meta" style="margin-top:2px">' + esc(x.city) + (x.taxId ? '｜統編 ' + esc(x.taxId) : '') + '｜' +
-    (x.until === '已成交' ? '已成交（永久鎖定）' : '鎖定至 ' + esc(x.until)) + (x.pending ? '（審核中）' : '') + '</div></div>').join('') +
+    (x.until === '已成交' ? '已成交（永久鎖定）' : (x.until === '不限期' ? '持續鎖定' : '鎖定至 ' + esc(x.until))) + (x.pending ? '（審核中）' : '') + '</div></div>').join('') +
     (rows.length > 300 ? '<div class="center">結果較多，請輸入關鍵字縮小範圍</div>' : '');
 }
 function openTab(name) {
@@ -693,7 +693,7 @@ async function loadCases() {
       '<div class="card case s-' + esc(c.status) + '">' +
         '<div class="top"><b>' + esc(c.org) + '</b><span class="badge">' + esc(c.status) + '</span></div>' +
         '<div class="meta">' + esc(c.id) + '｜' + esc(c.city) + '｜報備 ' + esc(c.time) + '<br>' +
-          '階段：' + (esc(c.stage) || '—') + '｜保護期至：' + (esc(c.protectUntil) || '—') +
+          '階段：' + (esc(c.stage) || '—') + '｜保護期：' + (esc(c.protectUntil) || '—') +
           (c.salesName ? '<br>承辦業務：' + esc(c.salesName) + '｜' + esc(c.units || 1) + ' 台' : '') + '</div>' +
         progressBar(c.stage) +
         (c.model ? '<div class="fee">機型 ' + esc(c.model) + (c.fee !== '' ? '｜預估服務費 <b>' + esc(c.fee) + ' 萬</b>（未稅，驗收且全額付清後結算）' : '') + '</div>' : '') +
@@ -765,7 +765,7 @@ async function loadTeam() {
         '<div class="meta">' + esc(c.member) + '（' + (esc(c.memberLevel) || '—') + '）' + (c.tier === 2 ? '・' + esc(c.via) + ' 的團隊' : '') + '｜' + esc(c.city) + '｜報備 ' + esc(c.time) + '<br>' +
         '階段：' + (esc(c.stage) || '—') + (c.model ? '｜機型 ' + esc(c.model) : '') +
         (c.ov !== '' && c.ov != null ? '｜團隊差價 <b>' + esc(c.ov) + ' 萬</b>' + (c.ovPaid ? '（已發 ' + esc(c.ovPaid) + '）' : c.settle ? '（' + esc(c.settle) + ' 結算）' : '') : '') +
-        '｜保護期至 ' + (esc(c.protectUntil) || '—') + '</div>' + progressBar(c.stage) + custDetail(c) +
+        '｜保護期 ' + (esc(c.protectUntil) || '—') + '</div>' + progressBar(c.stage) + custDetail(c) +
         (c.reply ? '<div class="meta">御宇回覆：' + esc(c.reply) + '</div>' : '') + '</div>').join('') + '</div>';
     }
     box.innerHTML = h;
@@ -1309,9 +1309,9 @@ async function openProgress(caseId) {
     const open = ['待確認', '有效', '成交'].indexOf(r.status) >= 0 && r.items.length > 0;
     let h = '<button class="back" onclick="openTab(\'list\')">‹ 返回我的案件</button>' +
       '<div class="card"><h2>回報進度｜' + esc(r.org) + '</h2>' +
-      '<div class="meta">' + esc(r.caseId) + '｜目前階段：' + (esc(r.stage) || '—') + '｜保護期至：' + (esc(r.protectUntil) || '—') + '</div>' +
+      '<div class="meta">' + esc(r.caseId) + '｜目前階段：' + (esc(r.stage) || '—') + '｜保護期：' + (esc(r.protectUntil) || '—') + '</div>' +
       progressBar(r.stage) +
-      '<div class="hint" style="margin-top:8px">報價前：完成初訪、場勘或「設備安裝環境評估表」後回報。報價單經御宇核准（階段「報價」）後，依序回報 簽約 → 交機 → 驗收，須附合約／簽收單／驗收單。送出後案件立即推進、保護期延長 90 天，御宇會收到通知。</div></div>';
+      '<div class="hint" style="margin-top:8px">報價前：完成初訪、場勘或「設備安裝環境評估表」後回報。報價單經御宇核准（階段「報價」）後，依序回報 簽約 → 交機 → 驗收，須附合約／簽收單／驗收單。送出後案件立即推進，御宇會收到通知。報備有效後持續鎖定，不限期。</div></div>';
     if (open) h += '<form class="card" id="pgForm" onsubmit="submitProgress(event)"><h2>新增回報</h2>' +
       '<label>回報項目 <span class="req">*</span></label><div class="chips">' +
         r.items.map((x, i) => '<label><input type="radio" name="item" value="' + esc(x) + '"' + (i === 0 ? ' checked' : '') + ' onchange="pgHint()">' + esc(x) + '</label>').join('') + '</div>' +
@@ -1408,12 +1408,12 @@ async function loadAdminProgress() {
     if (!r.ok) { box.innerHTML = '<div class="center">' + esc(r.message) + '</div>'; return; }
     let h = '<button class="back" onclick="loadAdmin()">‹ 返回經銷商列表</button>' +
       '<div class="card"><h2>進度回報（' + r.reports.length + '）</h2>' +
-      '<div class="hint">經銷商回報初訪／場勘／環境評估後，案件已自動推進並延長保護期，不需審核。若回報有誤，請到該案件卡片直接修改階段。環境評估表請轉中信技術審核。</div></div>';
+      '<div class="hint">經銷商回報初訪／場勘／環境評估後，案件已自動推進，不需審核（報備保護期不限期）。若回報有誤，請到該案件卡片直接修改階段。環境評估表請轉中信技術審核。</div></div>';
     if (!r.reports.length) h += '<div class="center">尚無回報</div>';
     h += r.reports.map(p => '<div class="card case">' +
       '<div class="top"><b>' + esc(p.org || p.caseId) + '</b><span class="badge">' + esc(p.item) + '</span></div>' +
       '<div class="meta">' + esc(p.caseId) + (p.city ? '｜' + esc(p.city) : '') + '｜經銷商 ' + esc(p.company) + (p.reporter ? '／' + esc(p.reporter) : '') + '<br>' +
-        '日期 ' + esc(p.date) + '｜回報 ' + esc(p.created) + '<br>目前階段 ' + (esc(p.stage) || '—') + '｜保護期至 ' + (esc(p.protectUntil) || '—') + '</div>' +
+        '日期 ' + esc(p.date) + '｜回報 ' + esc(p.created) + '<br>目前階段 ' + (esc(p.stage) || '—') + '｜保護期 ' + (esc(p.protectUntil) || '—') + '</div>' +
       '<div class="detail">' + esc(p.note) + '</div>' + filesHtml(p.files) + '</div>').join('');
     box.innerHTML = h;
   } catch (e) { box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
@@ -1485,7 +1485,7 @@ async function loadAdminQuotes(status) {
     let h = '<button class="back" onclick="loadAdmin()">‹ 返回經銷商列表</button>' +
       '<div class="card"><h2>報價單審核（' + r.quotes.length + '）</h2><div class="filters">' +
       sts.map(s => '<button class="' + (s === AQ.status ? 'on' : '') + '" onclick="loadAdminQuotes(\'' + s + '\')">' + (s || '全部') + '</button>').join('') + '</div>' +
-      '<div class="hint">御宇只做審核（核准或退回），不能修改報價內容；需要調整請退回，由經銷商修改後重送。核准後給正式編號（報價日期＋A＋流水號）、產生 PDF 並寄到御宇信箱待用印，案件自動推進到「報價」並延長保護期；用印後在「待用印」上傳用印版，系統才通知經銷商下載。「待審核」含待預審。包羅的報價單需兩道審核：鄧昌勝預審 → 御宇（周郁菁）核准。</div></div>';
+      '<div class="hint">御宇只做審核（核准或退回），不能修改報價內容；需要調整請退回，由經銷商修改後重送。核准後給正式編號（報價日期＋A＋流水號）、產生 PDF 並寄到御宇信箱待用印，案件自動推進到「報價」；用印後在「待用印」上傳用印版，系統才通知經銷商下載。「待審核」含待預審。包羅的報價單需兩道審核：鄧昌勝預審 → 御宇（周郁菁）核准。</div></div>';
     if (!r.quotes.length) h += '<div class="center">沒有符合的報價單</div>';
     h += r.quotes.map((q, i) => {
       const pend = q.status === '待審核' || q.status === '待預審';
@@ -1732,7 +1732,7 @@ function caseCard(c) {
       '經銷商：' + esc(c.company) + '（' + (esc(c.level) || '—') + '）／' + esc(c.agent) + '｜報備 ' + esc(c.time) + '<br>' +
       (c.uplineId ? '上線：' + esc(c.uplineName) + (c.ov !== '' ? '｜團隊差價 ' + esc(c.ov) + ' 萬' : '') + '<br>' : '') +
       (c.salesName ? '承辦業務：' + esc(c.salesName) + '｜' + esc(c.units || 1) + ' 台' + (c.bonusBase ? '｜計獎金額 ' + esc(c.bonusBase) + ' 萬' : '') + '<br>' : '') +
-      '階段：' + (esc(c.stage) || '—') + '｜保護期至：' + (esc(c.protectUntil) || '—') + '</div>' +
+      '階段：' + (esc(c.stage) || '—') + '｜保護期：' + (esc(c.protectUntil) || '—') + '</div>' +
     progressBar(c.stage) +
     (c.alerts && c.alerts.length ? '<div class="alerts">' + c.alerts.map(esc).join('<br>') + '</div>' : '') +
     '<details class="detail"><summary>客戶與聯絡資料</summary>' +
