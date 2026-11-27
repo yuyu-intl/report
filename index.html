@@ -256,7 +256,7 @@
     </div>
 
     <button class="btn" id="submitBtn" type="submit">送出報備</button>
-    <div class="hint" style="text-align:center;margin-top:8px">同一統編＋同一縣市以最先報備者為準，報備有效後持續鎖定（不限期，御宇釋出前他人無法報備）；選「總部」者該統編全國鎖定</div>
+    <div class="hint" style="text-align:center;margin-top:8px">報備送出即生效（免審核），持續鎖定不限期；同一統編＋同一縣市最多受理兩位報備人（第二位會通知御宇），第三位起無法報備；選「總部」者該統編全國鎖定</div>
   </form>
 
   <!-- 送出結果 -->
@@ -559,13 +559,14 @@ function runCheck() {
     const box = $('#dupMsg');
     const tax = form.taxId.value.replace(/\D/g, '');
     const city = form.city.value;
-    if (tax.length === 8 && !taxOk(tax)) { box.className = 'warn no'; box.textContent = '⚠ 統一編號檢查碼不正確，請核對後再填（統編錯誤無法鎖定、無法送出）'; setLocked(false); return; }
+    if (tax.length === 8 && !taxOk(tax)) { box.className = 'warn no'; box.style.cssText = ''; box.textContent = '⚠ 統一編號檢查碼不正確，請核對後再填（統編錯誤無法鎖定、無法送出）'; setLocked(false); return; }
     if ((tax.length !== 8 && !form.orgName.value.trim()) || !city) { box.classList.add('hidden'); setLocked(false); return; }
     try {
       const r = await api('check', { orgName: form.orgName.value, taxId: tax.length === 8 ? tax : '', city: city });
       if (!r.ok) return;
-      box.className = 'warn ' + (r.available ? 'ok' : 'no');
-      box.textContent = r.available ? (tax.length === 8 ? '✓ 此統編在' + city + '尚未被報備，可以報備' : '✓ ' + city + '目前尚無人報備此機構名稱') : '🔒 ' + r.message;
+      box.className = 'warn ' + (r.available ? (r.second ? '' : 'ok') : 'no');
+      box.style.cssText = r.second ? 'background:#fff4e0;color:#8a4b00' : '';
+      box.textContent = r.second ? '⚠ ' + r.message : r.available ? (tax.length === 8 ? '✓ 此統編在' + city + '尚未被報備，可以報備' : '✓ ' + city + '目前尚無人報備此機構名稱') : '🔒 ' + r.message;
       setLocked(!r.available);
     } catch (e) {}
   }, 400);
@@ -584,7 +585,7 @@ form.taxId.addEventListener('input', () => {
   if (n === 8) { runCheck(); return; }
   setLocked(false);
   const box = $('#dupMsg');
-  if (n) { box.className = 'warn no'; box.textContent = '統一編號須為 8 碼數字（目前 ' + n + ' 碼）'; } else box.classList.add('hidden');
+  if (n) { box.className = 'warn no'; box.style.cssText = ''; box.textContent = '統一編號須為 8 碼數字（目前 ' + n + ' 碼）'; } else box.classList.add('hidden');
 });
 form.orgName.addEventListener('change', runCheck);
 form.city.addEventListener('change', runCheck);
@@ -928,7 +929,7 @@ async function loadEvent() {
     box.innerHTML = h;
   } catch (err) { if (err.message !== 'relogin') box.innerHTML = '<div class="center">連線失敗，請稍後再試</div>'; }
 }
-// 說明會報名 → 一鍵轉報備（2026-11-20 簡化）：只需填統編，其餘由報名資料帶入、初訪時間免填（照一般報備查重／鎖定／審核）
+// 說明會報名 → 一鍵轉報備（2026-11-20 簡化）：只需填統編，其餘由報名資料帶入、初訪時間免填（照一般報備查重／鎖定；2026-11-28 起免審核）
 function evToReport(k) {
   const x = evData.list[k];
   if (!canReport()) { openTab('form'); return; }
